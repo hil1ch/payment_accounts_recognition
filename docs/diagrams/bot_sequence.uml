@@ -1,0 +1,129 @@
+@startuml
+
+title Sequence Diagram: Взаимодействие Telegram Bot с Системой
+
+actor Пользователь as User
+participant "Telegram Bot" as Bot
+participant "Серверная система" as Api
+
+== Initial File Upload ==
+
+User -> Bot : Отправка PDF файла в ТГ-бот
+activate Bot
+
+Bot -> Api : POST /api/v1/parse, отправка на сервер
+activate Api
+
+note over Bot, Api
+**Headers:**
+X-Bot-Token: <bot_token>
+Content-Type: multipart/form-data
+Content-Length: <file_size>
+end note
+
+Api -> Api : Валидация файла и токена
+Api -> Api : Формирование JSON ответа
+
+Api --> Bot : 202 Accepted
+note left of Api
+**Response Body:**
+{
+    "request_id": "req_12345",
+    "status": "processing",
+    "model_version": "<model_version>",
+    "processing_time_ms": 30
+}
+end note
+deactivate Api
+
+Bot --> User : "Файл принят в обработку. Ожидайте результат..."
+
+== Polling Phase ==
+
+loop [every 5 seconds until completed/error]
+    Bot -> Api : GET /api/v1/status/{request_id}
+    activate Api
+    note over Bot, Api
+    **Headers:**
+    X-Bot-Token: <bot_token>
+    end note
+    
+    Api -> Api : Проверка статуса обработки
+    
+    alt Still processing
+        Api --> Bot : 200 (processing)
+        note left of Api
+        **Response:**
+        {
+            "request_id": "req_12345",
+            "status": "processing",
+            "progress": 65
+        }
+        end note
+        deactivate Api
+        Bot --> User : "Обработка... 65%"
+    
+    else Processing completed
+        Api --> Bot : 200 (completed)
+        note left of Api
+        **Response:**
+        {
+            "request_id": "req_12345",
+            "status": "completed",
+            "result": { ...JSON structure... }
+        }
+        end note
+        deactivate Api
+        
+        Bot --> User : Отформатированный JSON (from 2xx/3xx mapping)
+        break
+    
+    else Processing failed
+        Api --> Bot : 200 (failed)
+        note left of Api
+        **Response:**
+        {
+            "request_id": "req_12345",
+            "status": "failed",
+            "error": "processing_error"
+        }
+        end note
+        deactivate Api
+        
+        Bot --> User : Сообщение об ошибке (from 4xx mapping, e.g., "Не удалось распознать документ")
+        break
+    end
+end
+
+== Error Scenarios ==
+
+alt Invalid file type
+    User -> Bot : Send invalid file type
+    activate Bot
+    Bot -> Api : POST /api/v1/parse
+    activate Api
+    Api --> Bot : 400 Bad Request
+    deactivate Api
+    Bot --> User : "INVALID_FORMAT" (from 4xx mapping)
+    deactivate Bot
+else Large file
+    User -> Bot : Send large file
+    activate Bot
+    Bot -> Api : POST /api/v1/parse
+    activate Api
+    Api --> Bot : 413 Payload Too Large
+    deactivate Api
+    Bot --> User : "FILE_TOO_LARGE" (from 4xx mapping)
+    deactivate Bot
+else Maintenance
+    User -> Bot : Send PDF during maintenance
+    activate Bot
+    Bot -> Api : POST /api/v1/parse
+    activate Api
+    Api --> Bot : 503 Service Unavailable
+    deactivate Api
+    Bot --> User : "SERVICE_TEMPORARILY_UNAVAILABLE" (from 5xx mapping)
+    deactivate Bot
+end
+
+@enduml

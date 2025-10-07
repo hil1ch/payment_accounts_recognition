@@ -1,0 +1,56 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+skinparam ranksep 80
+skinparam nodesep 60
+
+title Use-Case Диаграмма: Взаимодействие Telegram-бота с системой
+
+left to right direction
+
+actor "Пользователь" as User
+
+rectangle "Telegram-бот" as Bot {
+  usecase "Получить PDF-файл от пользователя" as UC1
+  usecase "Отправить PDF на сервер" as UC2
+  usecase "Обработать ответ сервера" as UC3
+  usecase "Отправить форматированный ответ пользователю" as UC4
+}
+
+rectangle "Серверная система" as Server {
+  usecase "Принять PDF-файл" as UC5
+  usecase "Распознавать структуру документа" as UC6
+  usecase "Сформировать JSON-ответ" as UC7
+  usecase "Вернуть JSON с кодом статуса" as UC8
+}
+
+' Стек блоков вертикально
+Bot -[hidden]d- Server
+
+' Центрируем актора вертикально относительно середины Bot
+User --[hidden]r- UC3
+
+User -right-> UC1
+UC4 -left-> User
+
+UC1 ..> UC2 : <<include>>
+UC2 ..> UC5 : <<extend>> (HTTP-запрос)
+UC5 ..> UC6 : <<include>>
+UC6 ..> UC7 : <<include>>
+UC7 ..> UC8 : <<include>>
+UC8 ..> UC3 : <<extend>> (HTTP-ответ)
+UC3 ..> UC4 : <<include>>
+
+note right of UC3
+  - 2xx/3xx: отправляет пользователю отформатированный JSON.
+  - 4xx: отправляет заранее подготовленную фразу
+  - 5xx: отправляет спецфразу
+end note
+
+note right of UC7
+  - Вложенность: Дочерние JSON
+  - Значение поля не распознано: Спецслово
+  - Наименование поля не распознано: Исключить
+end note
+
+@enduml

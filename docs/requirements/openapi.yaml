@@ -1,0 +1,175 @@
+openapi: 3.0.3
+info:
+  title: Invoice-Parser API
+  version: 1.0.0
+  description: |
+    В HTTP-API представлены два асинхронные эндпоинты в рамках разработки системы распознавании содержимого платёжного документа
+    1. POST `/api/v1/parse` - на входе принимает PDF файл с размер не более 10 Мб, возвращает код ответа 202 с подтвержением приёма и уникальный идентификатор "job_id"
+    2. GET `/api/v1/result` - на входе принимает идентификатор "job_id", возвращает код ответа 200 со сообщением типа "В процессе" либо ответ 4xx/5xx
+
+servers:
+  - url: http://localhost:8000
+    description: local
+
+paths:
+  /api/v1/parse:
+    post:
+      summary: Файл PDF принят и отправлен на парсинг
+      operationId: parseInvoice
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF файл не должен превышать более 10 Мб
+              required: [file]
+      responses:
+        "202":
+          description: PDF принят - отправлен на очередь
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedResp'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "413":
+          $ref: '#/components/responses/TooLarge'
+        "415":
+          $ref: '#/components/responses/UnsupportedMedia'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "408":
+          $ref: '#/components/responses/RequestTimeout'
+        "502":
+          $ref: '#/components/responses/MLServiceError'
+
+  /api/v1/result/{job_id}:
+    get:
+      summary: Получает результат парсинга
+      operationId: getResult
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: 7f3c95d1-4c72-4c09-9d73-8c90af06ba9b
+      responses:
+        "202":
+          description: Отправляет пользователю отформатированный JSON или текст сообщении о прогрессе работы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultResp'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    AcceptedResp:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+          description: Используется это в GET /result/{job_id}
+      required: [job_id]
+
+    ResultResp:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, processing, done, failed]
+        result:
+          $ref: '#/components/schemas/InvoiceOut'
+        error:
+          $ref: '#/components/schemas/ErrorObj'
+      required: [status]
+
+    InvoiceOut:
+      type: object
+      properties:
+        provider:
+          type: string
+          nullable: false
+        buyer:
+          type: string
+          nullable: false
+        total_amount:
+          type: number
+          format: float
+          nullable: false
+        NDS:
+          type: string
+          nullable: false
+      additionalProperties: true
+
+    ErrorObj:
+      type: object
+      properties:
+        code:
+          type: string
+          example: ML_SERVICE_ERROR
+        message:
+          type: string
+          example: Сервис распознавания временно недоступен. Попробуйте позже.
+      required: [code, message]
+
+  responses:
+    BadRequest:
+      description: Bad request – пользователь не отправил файл
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'
+    TooLarge:
+      description: Payload Too Large - PDF-файл слишком большой
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'
+    UnsupportedMedia:
+      description: Unsupported Media Type – загрузка только PDF-файлов
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'
+    TooManyRequests:
+      description: Пользователь сделал слишком много запросов
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'
+    RequestTimeout:
+      description: Превышено время ожидания ответа от ML сервиса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'
+    NotFound:
+      description: job_id не найдено (истёкло время жизни или не существует)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'
+    InternalError:
+      description: Ошибка на стороне сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'
+    MLServiceError:
+      description: Ошибка на стороне ML сервиса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorObj'

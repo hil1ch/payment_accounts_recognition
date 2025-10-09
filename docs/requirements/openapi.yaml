@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     В HTTP-API представлены два асинхронные эндпоинты в рамках разработки системы распознавании содержимого платёжного документа
-    1. POST `/api/v1/parse` - на входе принимает PDF файл с размер не более 10 Мб, возвращает код ответа 202 с подтвержением приёма и уникальный идентификатор "job_id"
+    1. POST `/api/v1/parse` - на входе принимает PDF файл с размер не более 10 Мб, возвращает код ответа 200 с подтвержением приёма и уникальный идентификатор "job_id"
     2. GET `/api/v1/result` - на входе принимает идентификатор "job_id", возвращает код ответа 202 со сообщением типа "В процессе" либо ответ 4xx/5xx
 
 servers:
@@ -29,7 +29,7 @@ paths:
                   description: PDF файл не должен превышать более 10 Мб
               required: [file]
       responses:
-        "202":
+        "200":
           description: PDF принят - отправлен на очередь
           content:
             application/json:
@@ -88,11 +88,9 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, processing, done, failed]
+          enum: [pending, processing, done]
         result:
           $ref: '#/components/schemas/InvoiceOut'
-        error:
-          $ref: '#/components/schemas/ErrorObj'
       required: [status]
 
     InvoiceOut:

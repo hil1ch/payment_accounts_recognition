@@ -61,12 +61,18 @@ paths:
             format: uuid
           example: 7f3c95d1-4c72-4c09-9d73-8c90af06ba9b
       responses:
-        "202":
-          description: Отправляет пользователю отформатированный JSON или текст сообщении о прогрессе работы
+        "200":
+          description: Отправляет пользователю отформатированный JSON
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResultResp'
+        "202":
+          description: Отправляет пользователю текст сообщении о прогрессе работы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResp'
         "404":
           $ref: '#/components/responses/NotFound'
         "500":
@@ -88,10 +94,23 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, processing, done]
+          enum: [done, fail]
         result:
           $ref: '#/components/schemas/InvoiceOut'
+        error:
+          $ref: '#/components/schemas/ErrorObj'
       required: [status]
+
+    ProcessingResp:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, processing]
+        processing_time_ms:
+          type: number
+          format: float
+      required: [status, processing_time_ms]
 
     InvoiceOut:
       type: object

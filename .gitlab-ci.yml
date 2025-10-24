@@ -18,6 +18,18 @@ default:
   before_script:
     - python -m pip install --upgrade pip
     - pip install pytest ruff 
+    - |
+      check_nonempty() {
+        local dir="$1"
+        echo "Checking folder: $dir"
+        if find "$dir" -type f ! -name ".gitkeep" ! -path "*/.*" | grep -q .; then
+          echo "$dir has real files"
+          return 0
+        else
+          echo "$dir is empty (only .gitkeep)"
+          return 1
+        fi
+      }
 
 lint_python:
   stage: lint
@@ -34,7 +46,7 @@ lint_js:
   script:
     - echo "Running ESLint..."
     - npx eslint . || echo "No ESLint config yet"
-  allow_failure: false
+  allow_failure: true #while tests empty
 
 unit_tests_backend:
   stage: test
@@ -43,9 +55,8 @@ unit_tests_backend:
   script:
     - cd backend
     - pip install -r requirements.txt
-    - pip install pytest
     - echo "Running backend tests..."
-    - pytest -v || echo "No smoke tests yet"
+    - check_nonempty backend/tests && pytest -v
 
 unit_tests_bot:
   stage: test
@@ -57,17 +68,17 @@ unit_tests_bot:
     - npm ci || npm install 
   script:
     - echo "Running bot tests..."
-    - npm test || echo "No JS tests yet"
+    - check_nonempty bot/tests && npm test
 
 unit_tests_ml:
   stage: test
   needs:
       - lint_python
   script:
-    - pip install pytest
     - cd ml
+    - pip install -r requirements.txt
     - echo "Running ml tests..."
-    - pytest -v  || echo "No smoke tests yet"
+    - check_nonempty ml/tests && pytest -v
 
 smoke_tests:
   stage: smoke

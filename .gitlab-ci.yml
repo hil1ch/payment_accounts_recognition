@@ -35,11 +35,10 @@ lint_python:
   stage: lint
   script:
     - ruff check .
-  allow_failure: false
 
 lint_js:
   stage: lint
-  image: node:22
+  image: node:20
   before_script:
     - cd bot
     - npm ci  || npm install
@@ -54,9 +53,9 @@ unit_tests_backend:
     - lint_python
   script:
     - cd backend
-    - pip install -r requirements.txt
+    - pip install -r requirements.txt || echo "empty or error" #while dir empty
     - echo "Running backend tests..."
-    - check_nonempty backend/tests && pytest -v
+    - check_nonempty tests && pytest -v
 
 unit_tests_bot:
   stage: test
@@ -65,7 +64,7 @@ unit_tests_bot:
     - lint_js
   before_script:
     - cd bot
-    - npm ci || npm install 
+    - npm ci || npm install || echo "empty or error" #while dir empty
   script:
     - echo "Running bot tests..."
     - check_nonempty bot/tests && npm test
@@ -76,9 +75,9 @@ unit_tests_ml:
       - lint_python
   script:
     - cd ml
-    - pip install -r requirements.txt
+    - pip install -r requirements.txt || echo "empty or error" #while dir empty
     - echo "Running ml tests..."
-    - check_nonempty ml/tests && pytest -v
+    - check_nonempty tests && pytest -v
 
 smoke_tests:
   stage: smoke

@@ -1,0 +1,66 @@
+stages:
+  - lint
+  - test
+  - smoke
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHONUNBUFFERED: "1"
+  PYTHON_VERSION: "3.12"
+
+cache:
+  paths:
+    - .cache/pip
+#    - venv/
+# if different python versions are needed
+
+default:
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install pytest ruff 
+
+lint:
+  stage: lint
+  script:
+    - ruff check .
+  allow_failure: false
+  rules:
+    - if: '$CI_COMMIT_BRANCH' 
+
+unit_tests_backend:
+  stage: test
+  needs: ["lint"]
+  script:
+    - cd backend
+    - pip install -r requirements.txt
+    - pip install pytest
+    - echo "Running backend tests..."
+    - pytest -v
+
+unit_tests_bot:
+  stage: test
+  needs: ["lint"]
+  script:
+    - pip install pytest
+    - cd bot
+    - echo "Running bot tests..."
+    - pytest -v
+
+unit_tests_ml:
+  stage: test
+  needs: ["lint"]
+  script:
+    - pip install pytest
+    - cd ml
+    - echo "Running ml tests..."
+    - pytest -v
+
+smoke_tests:
+  stage: smoke
+  needs:
+    - unit_tests_backend
+    - unit_tests_bot
+    - unit_tests_ml
+  script:
+    - echo "No smoke tests yet"

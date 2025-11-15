@@ -8,6 +8,7 @@ bot.api.setMyCommands([
   { command: 'help', description: 'Информация о боте' }
 ]);
 
+// Команда /'start'
 bot.command('start', async(ctx) => {
   const welcomeText = `Добро пожаловать в сервис для распознания содержимого pdf-скана платёжного счёта!
 
@@ -20,10 +21,18 @@ bot.command('start', async(ctx) => {
   await ctx.reply(welcomeText);
 });
 
+// Команда /'help'
 bot.command('help', async(ctx) => {
   await ctx.reply(
-    'Сервис предоставляет функционал распознавания содержимого pdf-скана платёжного счёта. Вы загружаете файл - бот возвращает JSON с распозанной структурой документа'
+    'Сервис предоставляет функционал распознавания содержимого pdf-скана платёжного счёта. Вы загружаете файл - бот возвращает JSON с распознанной структурой документа.'
   );
+});
+
+// Обработка неизвестных команд
+bot.on('message', async(ctx) => {
+  if (ctx.message.text && !ctx.message.text.startsWith('/')) {
+    await ctx.reply('Для работы с ботом используйте команды из меню или загрузите PDF-файл.');
+  }
 });
 
 bot.start();

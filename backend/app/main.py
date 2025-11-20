@@ -13,8 +13,8 @@ async def lifespan(app: FastAPI):
 
     #shutdown
     await rabbit_conn.close()
-    
-app = FastAPI()
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_api_route("/parse", parse, methods=["POST"])
 app.add_api_route("/result/{job_id}", get_result, methods=["GET"])

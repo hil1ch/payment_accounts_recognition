@@ -1,7 +1,6 @@
 from fastapi import UploadFile
 from app.schemas.client_DTOs import *
 import uuid
-import json
 
 async def parse(file: UploadFile) -> ParseResponce:
     #Mock 

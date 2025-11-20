@@ -1,4 +1,3 @@
-from tkinter import S
 import aio_pika
 from app.core.config import settings
 
@@ -17,7 +16,7 @@ class RabbitConnection:
         await self.channel.set_qos(prefetch_count=10)  # сколько сообщений consumer возьмёт одновременно
 
         # 3) Объявляем exchange и очередь (если их нет — создадутся)
-        self.exchange = await self.channel.declare_exchange(settings.exchnge_name, aio_pika.ExchangeType.DIRECT)
+        self.exchange = await self.channel.declare_exchange(settings.exchange_name, aio_pika.ExchangeType.DIRECT)
         queue = await self.channel.declare_queue(settings.queue_name, durable=True)
         await queue.bind(self.exchange, routing_key=settings.routing_key)
 

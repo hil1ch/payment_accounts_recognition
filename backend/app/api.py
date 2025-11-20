@@ -1,10 +1,20 @@
+import os
 from fastapi import UploadFile
 from app.schemas.client_DTOs import *
+from app.schemas.queue_message import QueueMessage
+from app.services.rabbit_publisher import publish_event
 import uuid
+from datetime import datetime
 
 async def parse(file: UploadFile) -> ParseResponce:
-    #Mock 
-    return ParseResponce(job_id = uuid.uuid1())
+    curr_job_id = uuid.uuid4()
+    message = QueueMessage(
+        job_id=curr_job_id,
+        file_path=os.path.abspath(__file__), #Mock
+        creation_time=datetime(2025, 11, 21, 15, 30)
+        )
+    await publish_event(message)
+    return ParseResponce(job_id = curr_job_id)
 
 async def get_result(uuid: UUID) -> ResultResponce:
     #Mock 

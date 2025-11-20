@@ -2,11 +2,11 @@ FROM python:3.11.9-alpine
 
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /app/
+WORKDIR /backend/
 
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/backend/.venv/bin:$PATH"
 
 ENV UV_COMPILE_BYTECODE=1
 
@@ -19,12 +19,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PYTHONPATH=/app
 
-COPY ./pyproject.toml ./uv.lock /app/
-
-COPY ./app /app/app
-COPY ./tests /app/tests
+COPY . /backend
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
-
-CMD ["fastapi", "run", "--workers", "4", "app/main.py"]
+    
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

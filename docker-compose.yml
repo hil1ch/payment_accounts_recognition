@@ -1,14 +1,30 @@
-version: "3.9"
 services:
   rabbitmq:
-    image: rabbitmq:3.12-management
+    image: rabbitmq:3.12-management-alpine
+    container_name: rabbit
+    hostname: rabbit
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      - rabbitmq_network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 10
 
   api:
-    build: ./api
-    environment:
-      - RABBIT_URL=amqp://guest:guest@rabbitmq/
+    build: ./backend
+    container_name: backend
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rabbitmq_network
+    ports:
+      - "8000:8000"
+
+
+networks:
+  rabbitmq_network:

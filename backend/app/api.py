@@ -2,7 +2,7 @@ import os
 from fastapi import UploadFile
 from app.schemas.client_DTOs import *
 from app.schemas.queue_message import QueueMessage
-from app.services.rabbit_publisher import publish_event
+from app.services.rabbit_publisher import publisher
 import uuid
 from datetime import datetime
 
@@ -13,7 +13,7 @@ async def parse(file: UploadFile) -> ParseResponce:
         file_path=os.path.abspath(__file__), #Mock
         creation_time=datetime(2025, 11, 21, 15, 30)
         )
-    await publish_event(message)
+    await publisher.publish(message)
     return ParseResponce(job_id = curr_job_id)
 
 async def get_result(uuid: UUID) -> ResultResponce:

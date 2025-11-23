@@ -1,5 +1,7 @@
 require('dotenv').config();
-const { Bot, GrammyError, HttpError } = require('grammy');
+const { Bot, InputFile } = require('grammy');
+const axios = require('axios');
+const FormData = require('form-data');
 
 const bot = new Bot(process.env.BOT_API_KEY);
 
@@ -7,6 +9,72 @@ bot.api.setMyCommands([
   { command: 'start', description: 'Запустить бота' },
   { command: 'help', description: 'Информация о боте' }
 ]);
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// Обработчик документа (PDF-файла)
+bot.on('message:document', async(ctx) => {
+  try {
+    const { document } = ctx.message;
+
+    if (!document.mime_type || !document.mime_type.includes('pdf')) {
+      await ctx.reply('✗ Принимаются только PDF-файлы.');
+      return;
+    }
+
+    if (document.file_size > MAX_FILE_SIZE) {
+      await ctx.reply('✗ Файл больше 10 МБ. Сожмите или разделите документ.');
+      return;
+    }
+
+    const processingMsg = await ctx.reply('⏳ Обрабатываю PDF-файл...');
+
+    const file = await ctx.getFile();
+    const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_API_KEY}/${file.file_path}`;
+
+    const response = await axios({
+      method: 'GET',
+      url: fileUrl,
+      responseType: 'stream'
+    });
+
+    const formData = new FormData();
+    formData.append('pdf', response.data, {
+      filename: document.file_name || 'document.pdf',
+      contentType: 'application/pdf'
+    });
+
+    const serverResponse = await axios.post(process.env.API_IP, formData, {
+      headers: {
+        ...formData.getHeaders()
+      },
+      timeout: 30000
+    });
+
+    await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id);
+
+    if (serverResponse.data) {
+      const jsonString = JSON.stringify(serverResponse.data, null, 2);
+
+      if (jsonString.length > 4000) {
+        await ctx.replyWithDocument(new InputFile(
+          Buffer.from(jsonString),
+          'result.json'
+        ), {
+          caption: '✅ Результат распознавания PDF:'
+        });
+      } else {
+        await ctx.reply(`✅ Результат распознавания PDF:\n\`\`\`json\n${jsonString}\n\`\`\``, {
+          parse_mode: 'Markdown'
+        });
+      }
+    } else {
+      await ctx.reply('✅ Файл успешно обработан, но сервер не вернул данные.');
+    };
+  } catch (error) {
+    await handleUploadError(ctx, error);
+  }
+});
 
 // Команда /'start'
 bot.command('start', async(ctx) => {
@@ -30,7 +98,8 @@ bot.command('help', async(ctx) => {
 2. Бот обработает документ
 3. Вы получите JSON с распознанной структурой документа
 
-Поддерживаемые форматы: PDF`;
+Поддерживаемые форматы: PDF
+Максимальный размер: 10 МБ`;
 
   await ctx.reply(helpText);
 });
@@ -43,54 +112,43 @@ bot.on('message', async(ctx) => {
 });
 
 // Обработка ошибок
-bot.catch((err) => {
-  const { ctx } = err;
-  console.error(`Error while handling update ${ctx.update.update_id}:`);
-  const e = err.error;
+async function handleUploadError(ctx, error) {
+  if (error.response) {
+    const { status } = error.response;
 
-  if (e instanceof GrammyError) {
-    console.error('Error in request:', e.description);
-
-    // Определяем текст ошибки для пользователя на основе кода
-    let errorMessage;
-    switch (e.error_code) {
+    switch (status) {
     case 400:
-      errorMessage = '✗ Неверный формат запроса. Убедитесь, что вы отправили PDF-файл.';
+      await ctx.reply('✗ Неверный формат запроса. Убедитесь, что вы отправили PDF-файл.');
       break;
     case 413:
-      errorMessage = '✗ Файл больше 10 МБ. Сожмите или разделите документ.';
+      await ctx.reply('✗ Файл больше 10 МБ. Сожмите или разделите документ.');
       break;
     case 415:
-      errorMessage = '✗ Принимаются только PDF-файлы.';
+      await ctx.reply('✗ Принимаются только PDF-файлы.');
       break;
     case 429:
-      errorMessage = '✗ Слишком много запросов. Подождите 1 мин и повторите.';
+      await ctx.reply('✗ Слишком много запросов. Подождите 1 мин и повторите.');
       break;
     case 404:
-      errorMessage = '✗ Результат устарел или не существует. Начните заново.';
+      await ctx.reply('✗ Результат устарел или не существует. Начните заново.');
       break;
     case 408:
-      errorMessage = '✗ Превышено времени ожидания ответа от ML сервиса';
+      await ctx.reply('✗ Превышено времени ожидания ответа от ML сервиса');
       break;
     case 500:
-      errorMessage = '✗ Ошибка сервера. Мы уже разбираемся, попробуйте позже.';
+      await ctx.reply('✗ Ошибка сервера. Мы уже разбираемся, попробуйте позже.');
       break;
     case 502:
-      errorMessage = '✗ Сервис распознавания временно недоступен. Попробуйте позже.';
+      await ctx.reply('✗ Сервис распознавания временно недоступен. Попробуйте позже.');
       break;
     default:
-      errorMessage = '✗ Произошла неизвестная ошибка. Попробуйте позже.';
+      await ctx.reply('✗ Произошла ошибка при обработке файла. Попробуйте позже.');
     }
-
-    // Отправляем сообщение об ошибке пользователю
-    ctx.reply(errorMessage).catch(console.error);
-  } else if (e instanceof HttpError) {
-    console.error('Could not contact Telegram:', e);
-    ctx.reply('✗ Не удалось связаться с сервером. Попробуйте позже.').catch(console.error);
+  } else if (error.code === 'ECONNABORTED') {
+    await ctx.reply('✗ Превышено времени ожидания ответа от ML сервиса');
   } else {
-    console.error('Unknown error:', e);
-    ctx.reply('✗ Произошла неизвестная ошибка. Попробуйте позже.').catch(console.error);
+    await ctx.reply('✗ Произошла неизвестная ошибка. Попробуйте позже.');
   }
-});
+}
 
 bot.start();

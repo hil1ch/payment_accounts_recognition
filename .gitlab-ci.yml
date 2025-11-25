@@ -1,0 +1,97 @@
+stages:
+  - lint
+  - test
+  - smoke
+
+variables:
+  PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
+  PYTHONUNBUFFERED: "1"
+  PYTHON_VERSION: "3.11.9"
+
+python_alpine: &python_alpine
+  image: python:${PYTHON_VERSION}-alpine
+
+rabbitmq_alpine: &rabbitmq_alpine
+  image: rabbitmq:3.12-managment-alpine
+
+node_alpine: &node_alpine
+  image: node:20-alpine
+
+cache:
+  paths:
+    - ${PIP_CACHE_DIR}
+    - node_moduls/
+
+default:
+  <<: *python_alpine
+  before_script:
+   - python -m pip install --upgrade pip
+   - pip install pytest ruff
+   - |
+      check_noempty() {
+        local dir="$1"
+        echo "Checking for empty directories in $dir"
+        if find "$dir" -type f ! -name ".gitkeep" ! -path "*/*." | grep -q .; then
+          echo "$dir is not empty"
+          return 0
+        else
+          echo "$dir is empty (only .gitkeep)"
+          return 1
+        fi
+      }
+
+python_lint:
+  stage: lint
+  script:
+    - ruff check .
+
+js_lint:
+  stage: lint
+  <<: *node_alpine
+  before_script:
+    - cd bot
+    - npm ci || npm install
+  script:
+    - echo "Running ESLint..."
+    - npx eslint . || echo "No ESLint config yet"
+
+unit_tests_backend:
+  stage: test
+  needs:
+    - python_lint
+  script:
+    - cd backend
+    - pip install -r requirements.txt || echo "empty or error"
+    - echo "Running backend tests..."
+    - check_nonempty tests && pytest -v
+
+unit_tests_bot:
+  stage: test
+  <<: *node_alpine
+  needs:
+    - js_lint
+  before_script:
+    - cd bot
+    - npm ci || npm install || echo "empty or error"
+  script:
+    - echo "Running bot tests..."
+    - check_nonempty bot/tests && npm test
+
+unit_tests_ml:
+  stage: test
+  needs:
+    - python_lint
+  script:
+    - cd ml
+    - pip install -r requirements.txt || echo "empty or error"
+    - echo "Running ml tests..."
+    - check_nonempty tests && pytest -v
+
+smoke_tests:
+  stage: smoke
+  needs:
+    - unit_tests_backend
+    - unit_tests_bot
+    - unit_tests_ml
+  script:
+    - echo "No smoke tests yet"

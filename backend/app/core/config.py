@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     exchange_name: str 
     queue_name: str 
     routing_key: str 
+    shared_dir: str
 
     model_config = SettingsConfigDict(env_file = ".env")
 

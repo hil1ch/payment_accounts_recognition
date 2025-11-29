@@ -13,6 +13,9 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+    
+    volumes:
+      - shared_data:/shared
 
   api:
     build: ./backend
@@ -24,7 +27,11 @@ services:
       - rabbitmq_network
     ports:
       - "8000:8000"
+    volumes:
+      - shared_data:/shared
 
+volumes:
+  shared_data:
 
 networks:
   rabbitmq_network:

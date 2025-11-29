@@ -62,3 +62,7 @@ Thumbs.db
 *.pid
 instance/
 .webassets-cache
+
+#Vscode settings
+.vscode/
+*.code-workspace

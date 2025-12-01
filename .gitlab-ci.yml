@@ -8,13 +8,13 @@ variables:
   PYTHONUNBUFFERED: "1"
   PYTHON_VERSION: "3.11.9"
 
-python_alpine: &python_alpine
+.python_alpine: &python_alpine
   image: python:${PYTHON_VERSION}-alpine
 
-rabbitmq_alpine: &rabbitmq_alpine
+.rabbitmq_alpine: &rabbitmq_alpine
   image: rabbitmq:3.12-managment-alpine
 
-node_alpine: &node_alpine
+.node_alpine: &node_alpine
   image: node:20-alpine
 
 cache:
@@ -46,8 +46,8 @@ python_lint:
     - ruff check .
 
 js_lint:
-  stage: lint
   <<: *node_alpine
+  stage: lint
   before_script:
     - cd bot
     - npm ci || npm install
@@ -66,8 +66,8 @@ unit_tests_backend:
     - check_nonempty tests && pytest -v
 
 unit_tests_bot:
-  stage: test
   <<: *node_alpine
+  stage: test
   needs:
     - js_lint
   before_script:

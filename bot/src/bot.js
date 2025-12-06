@@ -151,4 +151,11 @@ async function handleUploadError(ctx, error) {
   }
 }
 
-bot.start();
+if (require.main === module) {
+    bot.start();
+}
+
+// Экспортируем функцию для тестирования
+module.exports = {
+    handleUploadError
+};

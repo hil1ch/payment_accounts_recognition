@@ -1,0 +1,41 @@
+stages:
+  - lint
+  - test
+
+variables:
+  NPM_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/npm"
+  NODE_MODULE_DIR: "${CI_PROJECT_DIR}/bot/node_module"
+  NODE_VERSION: "20"
+
+.node_alpine: &node_alpine
+    image: node:${NODE_VERSION}-alpine
+
+cache:
+    paths:
+      - ${NPM_CACHE_DIR}
+      - ${NODE_MODULE_DIR}
+
+default:
+  <<: *node_alpine
+  before_script:
+      - echo "Preparing Node.js dependencies"
+      - cd bot
+      - npm install --cache ${NPM_CACHE_DIR} --prefer-offline
+      - echo "Node.js deps ready"
+
+js_lint:
+    stage: lint
+    before_script:
+        - test -f package.json && echo "package.json exists"
+        - test -d src && echo "dir src exists"
+    script:
+        - echo "Running ESLint..."
+        - npx eslint . || echo "No ESLint config yet"
+
+bot_tests:
+    stage: test
+    needs:
+      - js_lint
+    script:
+        - echo "Running bot tests..."
+        - npm test

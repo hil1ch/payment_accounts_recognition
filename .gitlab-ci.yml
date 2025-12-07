@@ -42,7 +42,7 @@ default:
 python_lint:
     stage: lint
     script:
-        - check_noempty
+        - check_noempty backend
         - ruff check .
 
 backend_unit_tests:

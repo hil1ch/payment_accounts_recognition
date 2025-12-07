@@ -42,9 +42,7 @@ default:
 python_lint:
     stage: lint
     script:
-        - cd backend
         - check_noempty
-        - source .venv/bin/activate
         - ruff check .
 
 backend_unit_tests:
@@ -52,8 +50,6 @@ backend_unit_tests:
     needs:
         - python_lint
     script:
-        - cd backend
-        - source .venv/bin/activate
         - echo "Running backend unit tests..."
         - pytest -v
 

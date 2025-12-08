@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     shared_dir: str
     redis_host: str 
     redis_port: int
+    redis_password: str
 
     model_config = SettingsConfigDict(env_file = ".env")
 

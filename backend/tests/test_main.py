@@ -10,7 +10,7 @@ def test_parse_endpoint(monkeypatch):
     async def fake_publish_event(message):
         return True
 
-    monkeypatch.setattr("app.api.publish_event", fake_publish_event)
+    monkeypatch.setattr("app.services.rabbit_publisher.publisher.publish", fake_publish_event)
 
     response = client.post("/parse", files={"file": ("test.txt", b"abc")})
     assert response.status_code == 200

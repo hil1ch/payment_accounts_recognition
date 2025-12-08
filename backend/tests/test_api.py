@@ -13,7 +13,7 @@ async def test_parse_function(monkeypatch):
     async def fake_publish_event(msg):
         return True
 
-    monkeypatch.setattr("app.api.publish_event", fake_publish_event)
+    monkeypatch.setattr("app.services.rabbit_publisher.publisher.publish", fake_publish_event)
 
     file = UploadFile(filename="test.pdf", file=BytesIO(b"data"))
     result = await parse(file)

@@ -1,4 +1,18 @@
 services:
+  services:
+  redis:
+    image: redis:8.4.0-alpine
+    hostname: redis
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass yourpassword
+    networks:
+      - redis_network
+    volumes:
+      - redis_data:/data
+      
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: rabbit
@@ -25,6 +39,7 @@ services:
         condition: service_healthy
     networks:
       - rabbitmq_network
+      - redis_network
     ports:
       - "8000:8000"
     volumes:
@@ -32,6 +47,8 @@ services:
 
 volumes:
   shared_data:
+  redis_data:
+    driver: local
 
 networks:
   rabbitmq_network:

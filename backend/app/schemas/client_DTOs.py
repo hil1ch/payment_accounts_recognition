@@ -6,6 +6,8 @@ from enum import Enum
 class JobStatus(str, Enum):
     done = "done"
     in_progress = "in_progress"
+    waiting = "waiting"
+    failed = "failed"
 
 
 class ParseResponce(BaseModel):

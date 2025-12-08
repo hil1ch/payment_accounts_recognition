@@ -1,4 +1,3 @@
-import json
 import aio_pika
 from app.schemas.queue_message import QueueMessage
 from app.core.config import settings

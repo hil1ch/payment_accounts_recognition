@@ -1,7 +1,5 @@
-import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from uuid import UUID
 import json
 
 client = TestClient(app)

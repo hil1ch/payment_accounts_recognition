@@ -21,7 +21,7 @@ default:
   before_script:
       - echo "Preparing Node.js dependencies"
       - cd bot
-      - npm ci || npm install --cache ${NPM_CACHE_DIR} --prefer-offline
+      - npm ci
       - echo "Node.js deps ready"
       - |
         check_noempty() {

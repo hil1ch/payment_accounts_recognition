@@ -5,7 +5,6 @@ stages:
 
 variables:
   NPM_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/npm"
-  NODE_MODULE_DIR: "${CI_PROJECT_DIR}/bot/node_module"
   NODE_VERSION: "20"
 
 .node_alpine: &node_alpine
@@ -14,15 +13,12 @@ variables:
 cache:
     paths:
       - .cache/
-      - ${NODE_MODULE_DIR}
+      - node_module/
 
 default:
   <<: *node_alpine
   before_script:
-      - echo "Preparing Node.js dependencies"
-      - cd bot
-      - npm ci
-      - echo "Node.js deps ready"
+      - npm install --cache ${NPM_CACHE_DIR}
       - |
         check_noempty() {
           local dir = "$1"
@@ -38,14 +34,20 @@ default:
 
 js_lint:
     stage: lint
+    before_script:
+      - cd bot
+      - npm ci
     script:
         - echo "Running ESLint..."
         - npx eslint . || echo "No ESLint config yet"
 
-bot_tests:
+bot_unit_tests:
     stage: test
     needs:
       - js_lint
+    before_script:
+      - cd bot
+      - npm ci
     script:
         - echo "Running bot tests..."
         - ckeck_noempty src
@@ -55,6 +57,6 @@ bot_tests:
 smoke_test:
   stage: smoke
   needs:
-    - bot_tests
+    - bot_unit_tests
   script:
     - echo "No smoke test yet"

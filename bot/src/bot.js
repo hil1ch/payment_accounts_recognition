@@ -105,7 +105,7 @@ bot.on('message:document', async(ctx) => {
       });
 
       const formData = new FormData();
-      formData.append('pdf', fileStream.data, {
+      formData.append('file', fileStream.data, {
         filename: fileName,
         contentType: 'application/pdf'
       });

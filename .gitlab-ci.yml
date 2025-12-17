@@ -52,6 +52,7 @@ python_prepare_deps:
 
 js_prepare_deps:
   <<: *node_alpine
+  stage: prepare
   script:
     - echo "Preparing Node.js dependencies"
     - cd bot

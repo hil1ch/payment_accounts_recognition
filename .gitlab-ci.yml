@@ -26,6 +26,8 @@ default:
   before_script:
       - python -m pip install --upgrade pip
       - pip install ruff uv --cache-dir ${PIP_CACHE_DIR}
+      - cd backend && uv sync
+      - cd ..
       - |
         check_noempty() {
           local dir = "$1"
@@ -49,7 +51,7 @@ js_lint:
     stage: lint
     before_script:
       - cd bot
-      - npm ci
+      - npm install --cache ${NPM_CACHE_DIR}
     script:
         - echo "Running ESLint..."
         - npx eslint . || echo "No ESLint config yet"
@@ -60,7 +62,6 @@ backend_unit_tests:
     - python_lint
   before_script:
     - cd backend
-    - uv sync
   script:
     - echo "Running backend tests..."
     - check_noempty tests && uv pytest -v
@@ -72,7 +73,7 @@ bot_unit_tests:
       - js_lint
     before_script:
       - cd bot
-      - npm ci
+      - npm install --cache ${NPM_CACHE_DIR}
     script:
         - echo "Running bot tests..."
         - check_noempty tests && npm test

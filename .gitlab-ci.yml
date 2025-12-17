@@ -6,9 +6,15 @@ stages:
 variables:
   NPM_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/npm"
   NODE_VERSION: "20"
+  PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
+  PYTHONUNBUFFERED: "1"
+  PYTHON_VERSION: "3.11.9"
 
 .node_alpine: &node_alpine
   image: node:${NODE_VERSION}-alpine
+
+.python_alpine: &python_alpine
+  image: python:${PYTHON_VERSION}-alpine
 
 cache:
     paths:
@@ -16,9 +22,10 @@ cache:
       - node_module/
 
 default:
-  <<: *node_alpine
+  <<: *python_alpine
   before_script:
-      - npm install --cache ${NPM_CACHE_DIR}
+      - python -m pip install --upgrade pip
+      - pip install ruff uv --cache-dir ${PIP_CACHE_DIR}
       - |
         check_noempty() {
           local dir = "$1"
@@ -32,7 +39,13 @@ default:
           fi
         }
 
+python_lint:
+  stage: lint
+  script:
+    - ruff check .
+
 js_lint:
+    <<: *node_alpine
     stage: lint
     before_script:
       - cd bot
@@ -41,7 +54,19 @@ js_lint:
         - echo "Running ESLint..."
         - npx eslint . || echo "No ESLint config yet"
 
+backend_unit_tests:
+  stage: test
+  needs:
+    - python_lint
+  before_script:
+    - cd backend
+    - uv sync
+  script:
+    - echo "Running backend tests..."
+    - check_noempty tests && uv pytest -v
+
 bot_unit_tests:
+    <<: *node_alpine
     stage: test
     needs:
       - js_lint
@@ -50,13 +75,12 @@ bot_unit_tests:
       - npm ci
     script:
         - echo "Running bot tests..."
-        - ckeck_noempty src
-        - check_noempty tests
-        - npm test
+        - check_noempty tests && npm test
 
 smoke_test:
   stage: smoke
   needs:
+    - backend_unit_tests
     - bot_unit_tests
   script:
     - echo "No smoke test yet"

@@ -20,22 +20,8 @@ variables:
 cache:
     paths:
       - .cache/
+      - backend/.venv/
       - node_module/
-
-default:
-  before_script:
-      - |
-        check_noempty() {
-          local dir = "$1"
-          echo "Checking for empty directories in $dir"
-          if find "$dir" -type f ! -name ".gitkeep" ! -path "*/.*" | grep -q .; then
-            echo "$dir has files"
-            return 0
-          else
-            echo "$dir is empty (only .gitkeep)"
-            return 1
-          fi
-        }
 
 python_prepare_deps:
   <<: *python_alpine
@@ -66,10 +52,9 @@ python_lint:
     - python_prepare_deps
   before_script:
     - cd backend
-    - source .venv/bin/activate
     - uv add ruff
   script:
-    - uvx ruff check
+    - uv tool run ruff check
 
 js_lint:
     <<: *node_alpine
@@ -89,7 +74,7 @@ backend_unit_tests:
     - cd backend
   script:
     - echo "Running backend tests..."
-    - check_noempty tests && uvx pytest -v
+    - uv tool run pytest -v
 
 bot_unit_tests:
     <<: *node_alpine
@@ -98,7 +83,7 @@ bot_unit_tests:
       - js_lint
     script:
         - echo "Running bot tests..."
-        - check_noempty tests && npm test
+        - npm test
 
 smoke_test:
   stage: smoke

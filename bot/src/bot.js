@@ -111,7 +111,7 @@ bot.on('message:document', async(ctx) => {
       });
 
       // Запрос к серверу распознавания
-      const serverResponse = await axios.post(process.env.API_IP, formData, {
+      const serverResponse = await axios.post(`${process.env.BASE_URL}/parse`, formData, {
         headers: { ...formData.getHeaders() },
         timeout: 60000
       });

@@ -25,7 +25,7 @@ default:
   <<: *python_alpine
   before_script:
       - python -m pip install --upgrade pip
-      - pip install ruff uv --cache-dir ${PIP_CACHE_DIR}
+      - pip install uv --cache-dir ${PIP_CACHE_DIR}
       - cd backend && uv sync
       - cd ..
       - |
@@ -43,15 +43,18 @@ default:
 
 python_lint:
   stage: lint
+  before_script:
+    - cd backend
+    - uv add ruff
   script:
-    - ruff check .
+    - uvx ruff check .
 
 js_lint:
     <<: *node_alpine
     stage: lint
     before_script:
       - cd bot
-      - npm install --cache ${NPM_CACHE_DIR}
+      - npm ci --force
     script:
         - echo "Running ESLint..."
         - npx eslint . || echo "No ESLint config yet"
@@ -64,7 +67,7 @@ backend_unit_tests:
     - cd backend
   script:
     - echo "Running backend tests..."
-    - check_noempty tests && uv pytest -v
+    - check_noempty tests && uvx pytest -v
 
 bot_unit_tests:
     <<: *node_alpine
@@ -73,7 +76,7 @@ bot_unit_tests:
       - js_lint
     before_script:
       - cd bot
-      - npm install --cache ${NPM_CACHE_DIR}
+      - npm ci --force
     script:
         - echo "Running bot tests..."
         - check_noempty tests && npm test

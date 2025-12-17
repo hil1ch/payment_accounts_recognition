@@ -1,4 +1,5 @@
 stages:
+  - prepare
   - lint
   - test
   - smoke
@@ -22,13 +23,7 @@ cache:
       - node_module/
 
 default:
-  <<: *python_alpine
   before_script:
-      - python -m pip install --upgrade pip
-      - pip install uv --cache-dir ${PIP_CACHE_DIR}
-      - cd backend && uv sync
-      - uv venv
-      - cd ..
       - |
         check_noempty() {
           local dir = "$1"
@@ -42,26 +37,48 @@ default:
           fi
         }
 
+python_prepare_deps:
+  <<: *python_alpine
+  stage: prepare
+  before_script:
+    - echo "Installing uv..."
+    - python -m pip install --upgrade pip
+    - pip install uv --cahce-dir ${PIP_CACHE_DIR}
+  script:
+    - echo "Preparing uv dependencies"
+    - cd backend
+    - uv sync
+    - echo "uv deps ready"
+
+js_prepare_deps:
+  <<: *node_alpine
+  script:
+    - echo "Preparing Node.js dependencies"
+    - cd bot
+    - npm install --cache ${NPM_CACHE_DIR} --legacy-peer-deps || npm ci --legacy-peer-deps
+    - echo "Node.js deps ready"
+
 python_lint:
+  <<: *python_alpine
   stage: lint
+  needs:
+    - python_prepare_deps
   before_script:
     - cd backend
     - source .venv/bin/activate
     - uv add ruff
   script:
-    - uvx ruff check .
+    - uvx ruff check
 
 js_lint:
     <<: *node_alpine
     stage: lint
-    before_script:
-      - cd bot
-      - npm install --legacy-peer-deps || npm ci --force
     script:
         - echo "Running ESLint..."
-        - npx eslint . || echo "No ESLint config yet"
+        - npx eslint || echo "No ESLint config yet"
 
 backend_unit_tests:
+  <<: *python_alpine
   stage: test
   needs:
     - python_lint
@@ -76,9 +93,6 @@ bot_unit_tests:
     stage: test
     needs:
       - js_lint
-    before_script:
-      - cd bot
-      - npm install --legacy-peer-deps || npm ci --force
     script:
         - echo "Running bot tests..."
         - check_noempty tests && npm test

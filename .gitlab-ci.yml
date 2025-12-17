@@ -43,7 +43,7 @@ python_prepare_deps:
   before_script:
     - echo "Installing uv..."
     - python -m pip install --upgrade pip
-    - pip install uv --cahce-dir ${PIP_CACHE_DIR}
+    - pip install uv
   script:
     - echo "Preparing uv dependencies"
     - cd backend
@@ -74,6 +74,8 @@ python_lint:
 js_lint:
     <<: *node_alpine
     stage: lint
+    needs:
+      - js_prepare_deps
     script:
         - echo "Running ESLint..."
         - npx eslint || echo "No ESLint config yet"

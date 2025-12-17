@@ -52,9 +52,10 @@ python_lint:
     - python_prepare_deps
   before_script:
     - cd backend
+    - source .venv/bin/activate
     - uv add ruff
   script:
-    - uv tool run ruff check
+    - uvx ruff check
 
 js_lint:
     <<: *node_alpine
@@ -62,6 +63,7 @@ js_lint:
     needs:
       - js_prepare_deps
     script:
+        - cd bot
         - echo "Running ESLint..."
         - npx eslint || echo "No ESLint config yet"
 
@@ -72,9 +74,10 @@ backend_unit_tests:
     - python_lint
   before_script:
     - cd backend
+    - source .venv/bin/activate
   script:
     - echo "Running backend tests..."
-    - uv tool run pytest -v
+    - uvx pytest -v
 
 bot_unit_tests:
     <<: *node_alpine
@@ -82,6 +85,7 @@ bot_unit_tests:
     needs:
       - js_lint
     script:
+        - cd bot
         - echo "Running bot tests..."
         - npm test
 

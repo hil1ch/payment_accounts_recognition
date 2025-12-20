@@ -52,6 +52,21 @@ services:
       - "8000:8000"
     volumes:
       - shared_data:/shared
+    
+  ml_service:
+    build: ./ml
+    container_name: ml_service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rabbitmq_network
+      - redis_network
+    volumes:
+      - shared_data:/shared
+
 
 volumes:
   shared_data:

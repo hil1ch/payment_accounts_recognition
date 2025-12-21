@@ -17,9 +17,6 @@ class RedisService:
 
     def change_status(self, job_id:str, status: JobStatus):
         value = self.client.get(job_id) 
-        if value is None:
-            time.sleep(5) #TODO: редис не успевает сохранить сообщение
-            value = self.client.get(job_id)
         message = RedisMessage.model_validate_json(value)
         message.status = status
         self.client.set(job_id, message.model_dump_json())

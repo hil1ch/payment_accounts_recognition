@@ -34,7 +34,6 @@ class RabbitService:
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
             print(f"Error processing message: {e}")
-            traceback.print_exc()
             #Говрит что мы удаляем сообщение из очереди если не обработали
             #Пока не знаю как лучше, тут в идеале добавить случи при который мы оставляем, а при каких нет
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)

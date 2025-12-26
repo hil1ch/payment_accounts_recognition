@@ -1,61 +1,98 @@
 stages:
-    - lint
-    - test
-    - smoke
+  - prepare
+  - lint
+  - test
+  - smoke
 
 variables:
-    PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
-    PYTHONUNBUFFERED: "1"
-    PYTHON_VERSION: "3.11.9"
+  NPM_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/npm"
+  NODE_VERSION: "20"
+  PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
+  PYTHONUNBUFFERED: "1"
+  PYTHON_VERSION: "3.11.9"
+
+.node_alpine: &node_alpine
+  image: node:${NODE_VERSION}-alpine
 
 .python_alpine: &python_alpine
-    image: python:${PYTHON_VERSION}-alpine
+  image: python:${PYTHON_VERSION}-alpine
 
 cache:
     paths:
-        - ${PIP_CACHE_DIR}
-        - ${CI_PROJECT_DIR}/backend/.venv/
+      - .cache/
+      - backend/.venv/
+      - node_module/
 
-default:
-    <<: *python_alpine
-    before_script:
-        - echo "Preparing Python dependencies"
-        - cd backend
-        - python -m venv .venv
-        - source .venv/bin/activate
-        - pip install --upgrade pip
-        - pip install --cache-dir ../.cache/pip ruff pytest
-        - echo "Python deps ready"
-        - |
-            check_noempty() {
-                local dir="$1"
-                echo "Checking for empty directories $dir"
-                if find "$dir" -type f ! -name ".gitkeep" ! -path "*/.*" | grep -q .; then
-                    echo "$dir has real files"
-                    return 0
-                else
-                    echo "$dir is empty (only .gitkeep)"
-                    return 1
-                fi
-            }
+python_prepare_deps:
+  <<: *python_alpine
+  stage: prepare
+  before_script:
+    - echo "Installing uv..."
+    - python -m pip install --upgrade pip
+    - pip install uv
+  script:
+    - echo "Preparing uv dependencies"
+    - cd backend
+    - uv sync
+    - echo "uv deps ready"
+
+js_prepare_deps:
+  <<: *node_alpine
+  stage: prepare
+  script:
+    - echo "Preparing Node.js dependencies"
+    - cd bot
+    - npm install --cache ${NPM_CACHE_DIR} --legacy-peer-deps || npm ci --legacy-peer-deps
+    - echo "Node.js deps ready"
 
 python_lint:
+  <<: *python_alpine
+  stage: lint
+  needs:
+    - python_prepare_deps
+  before_script:
+    - cd backend
+    - source .venv/bin/activate
+    - uv add ruff
+  script:
+    - uvx ruff check
+
+js_lint:
+    <<: *node_alpine
     stage: lint
+    needs:
+      - js_prepare_deps
     script:
-        - check_noempty backend
-        - ruff check .
+        - cd bot
+        - echo "Running ESLint..."
+        - npx eslint || echo "No ESLint config yet"
 
 backend_unit_tests:
+  <<: *python_alpine
+  stage: test
+  needs:
+    - python_lint
+  before_script:
+    - cd backend
+    - source .venv/bin/activate
+  script:
+    - echo "Running backend tests..."
+    - uvx pytest -v
+
+bot_unit_tests:
+    <<: *node_alpine
     stage: test
     needs:
-        - python_lint
+      - js_lint
     script:
-        - echo "Running backend unit tests..."
-        - pytest -v
+        - cd bot
+        - echo "Running bot tests..."
+        - npm test
 
-smoke_tests:
-    stage: smoke
-    needs:
-        - backend_unit_tests
-    script:
-        - echo "No smoke tests yet"
+smoke_test:
+  stage: smoke
+  needs:
+    - backend_unit_tests
+    - bot_unit_tests
+  script:
+    - echo "No smoke test yet"

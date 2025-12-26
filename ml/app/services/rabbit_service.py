@@ -29,7 +29,6 @@ class RabbitService:
         #Тут будет обработка пока не придумал как это построить
         try:
             message = json.loads(body.decode())
-            print(f"Received message: {message}")
             self.task_processor.process(message)
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:

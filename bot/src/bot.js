@@ -77,9 +77,10 @@ async function pollResult(jobId, options = {}) {
     }
 
     // ⏳ В ожидании
-    if (data.status === 'waiting') {
+    if (data.status === 'waiting' || data.status === 'in_progress') {
       // ничего не делаем
-    } else {
+    } 
+    else {
       throw new Error(`Неизвестный статус задачи: ${data.status}`);
     }
 

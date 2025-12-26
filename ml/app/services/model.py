@@ -1,7 +1,7 @@
 import time
 
 def process_document(file_path: str) -> dict:
-    time.sleep(20)  
+    time.sleep(5)  
     return {
         "path": file_path,
         "total": 12345,

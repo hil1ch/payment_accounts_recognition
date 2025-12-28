@@ -1,7 +1,7 @@
 from pydantic import Json
 from services.redis_service import RedisService
 from schemas.redis_message import JobStatus
-from services.model import process_document
+from services.model import process_file
 from schemas.rabbit_message import RabbitMessage
 
 
@@ -15,9 +15,9 @@ class TaskProcessor:
             job_id = parsed_message.job_id
             file_path = parsed_message.file_path
             self.redis_service.change_status(str(job_id), JobStatus.in_progress)
-            result = process_document(file_path)
+            result = process_file(str(file_path))
             self.redis_service.save_result(str(job_id), result)
             print(f"Processed job {job_id} with result: {result}")
         except Exception as e:
             self.redis_service.change_status(str(job_id), JobStatus.failed)
-            raise
+            raise 

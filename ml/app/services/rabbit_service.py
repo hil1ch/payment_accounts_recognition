@@ -36,4 +36,5 @@ class RabbitService:
             #Говрит что мы удаляем сообщение из очереди если не обработали
             #Пока не знаю как лучше, тут в идеале добавить случи при который мы оставляем, а при каких нет
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            raise e 
         

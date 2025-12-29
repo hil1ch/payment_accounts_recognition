@@ -170,8 +170,49 @@ def get_image_markdown(image_path: str) -> str:
 
     return markdown
 
-def process_file(file_path: str):
-    markdown_text = get_image_markdown(file_path)
+from pathlib import Path
+import fitz
+
+def single_page_pdf_to_jpg(
+    pdf_path: str | Path,
+    output_jpg_path: str | Path,
+    dpi: int = 300
+) -> Path:
+    """
+    Гарантированно конвертирует ОДНОСТРАНИЧНЫЙ PDF в JPG.
+
+    :param pdf_path: путь к pdf
+    :param output_jpg_path: путь к jpg
+    :param dpi: качество (300 — OCR-ready)
+    :return: путь к jpg
+    """
+    pdf_path = Path(pdf_path)
+    output_jpg_path = Path(output_jpg_path)
+
+    doc = fitz.open(pdf_path)
+
+    if doc.page_count != 1:
+        raise ValueError(f"Ожидался одностраничный PDF, страниц: {doc.page_count}")
+
+    page = doc.load_page(0)
+
+    zoom = dpi / 72  # 72 — базовый DPI PDF
+    matrix = fitz.Matrix(zoom, zoom)
+
+    pix = page.get_pixmap(matrix=matrix, alpha=False)
+    pix.save(output_jpg_path)
+
+    doc.close()
+    return output_jpg_path
+
+def process_file(pdf_path: str):
+    jpg_path = Path(pdf_path).with_suffix(".jpg")
+    single_page_pdf_to_jpg(
+        pdf_path=pdf_path,
+        output_jpg_path=jpg_path,
+        dpi=300
+    )
+    markdown_text = get_image_markdown(str(jpg_path))
     print(markdown_text)
     markdown_text = clean_ocr_markdown(markdown_text)
     print(markdown_text)

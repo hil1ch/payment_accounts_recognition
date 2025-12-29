@@ -53,7 +53,7 @@ function getErrorMessage(error) {
 async function pollResult(jobId, options = {}) {
   const {
     interval = 3000,
-    timeout = 60000
+    timeout = 600000
   } = options;
 
   const startTime = Date.now();

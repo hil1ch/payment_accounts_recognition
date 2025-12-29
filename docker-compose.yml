@@ -80,8 +80,8 @@ services:
       - ollama_data:/root/.ollama
 
     environment:
-      - OLLAMA_NUM_GPU=1
-      - OLLAMA_GPU_LAYERS=100
+    - OLLAMA_NUM_GPU=0      # ❗ если нет мощной GPU
+    - OLLAMA_NUM_THREADS=4  # под ноут
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]

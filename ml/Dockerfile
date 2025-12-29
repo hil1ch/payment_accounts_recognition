@@ -1,5 +1,4 @@
-FROM python:3.11.9-alpine
-
+FROM python:3.11.9-slim-bookworm
 WORKDIR /ml/
 
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
@@ -13,7 +12,7 @@ ENV UV_LINK_MODE=copy
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project
+    uv sync --frozen --no-install-project -v
 
 ENV PYTHONPATH=/app
 

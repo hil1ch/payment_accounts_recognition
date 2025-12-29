@@ -10,7 +10,6 @@ until curl -s http://localhost:11434/api/tags > /dev/null; do
 done
 
 echo "Pulling models..."
-ollama pull deepseek-ocr:3b-bf16
 ollama pull gemma3:4b-it-qat
 
 echo "Ollama is ready."

@@ -17,6 +17,7 @@ class RedisService:
 
     def change_status(self, job_id:str, status: JobStatus):
         value = self.client.get(job_id) 
+        print(value)
         message = RedisMessage.model_validate_json(value)
         message.status = status
         self.client.set(job_id, message.model_dump_json())

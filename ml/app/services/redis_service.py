@@ -1,6 +1,5 @@
 import redis
 from schemas.redis_message import JobStatus, RedisMessage
-import time
 
 
 class RedisService:

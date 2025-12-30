@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     redis_host: str 
     redis_port: int
     redis_password: str
+    ollama_host: str
+    max_generation_time: int = 200
 
     model_config = SettingsConfigDict(env_file = ".env")
 

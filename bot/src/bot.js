@@ -50,6 +50,51 @@ function getErrorMessage(error) {
   }
 }
 
+async function pollResult(jobId, options = {}) {
+  const {
+    interval = Number(process.env.POLL_INTERVAL),
+    timeout = Number(process.env.POLL_TIMEOUT)
+  } = options;
+
+  const startTime = Date.now();
+
+  while (true) {
+    const response = await axios.get(
+      `${process.env.BASE_URL}/result/${jobId}`,
+      { timeout: Number(process.env.GET_TIMEOUT) }
+    );
+
+    console.log('POLL:', response.data);
+
+    // eslint-disable-next-line prefer-destructuring
+    const data = response.data;
+
+    if (!data || !data.status) {
+      throw new Error('Некорректный ответ сервера');
+    }
+
+    // ✅ Готово
+    if (data.status === 'done') {
+      return data;
+    }
+
+    // ⏳ В ожидании
+    if (data.status === 'waiting') {
+      // ничего не делаем
+    } else {
+      throw new Error(`Неизвестный статус задачи: ${data.status}`);
+    }
+
+    if (Date.now() - startTime > timeout) {
+      const err = new Error('Timeout while waiting for recognition result');
+      err.code = 'TIMEOUT';
+      throw err;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+}
+
 // Основной обработчик PDF
 bot.on('message:document', async(ctx) => {
   const { document } = ctx.message;
@@ -111,33 +156,70 @@ bot.on('message:document', async(ctx) => {
       });
 
       // Запрос к серверу распознавания
-      const serverResponse = await axios.post(`${process.env.BASE_URL}/parse`, formData, {
-        headers: { ...formData.getHeaders() },
-        timeout: 60000
-      });
-
-      // Обновляем статус: Готово
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `✅ **${fileName}**: Обработка завершена!`, { parse_mode: 'Markdown' });
-
-      // Отправка результата
-      if (serverResponse.data) {
-        const jsonString = JSON.stringify(serverResponse.data, null, 2);
-
-        if (jsonString.length > 4000) {
-          await ctx.replyWithDocument(new InputFile(Buffer.from(jsonString), `result_${fileName}.json`), {
-            caption: `📄 Результат для: ${fileName}`
-          });
-        } else {
-          await ctx.reply(`📄 **Результат (${fileName}):**\n\`\`\`json\n${jsonString}\n\`\`\``, {
-            parse_mode: 'Markdown'
-          });
+      const serverResponse = await axios.post(
+        `${process.env.BASE_URL}/parse`,
+        formData,
+        {
+          headers: { ...formData.getHeaders() },
+          timeout: Number(process.env.POST_TIMEOUT)
         }
+      );
+
+      let parseResponse = serverResponse.data;
+
+      if (typeof parseResponse === 'string') {
+        try {
+          parseResponse = JSON.parse(parseResponse);
+        } catch (e) {
+          throw new Error('Невозможно распарсить ответ сервера');
+        }
+      }
+
+      const jobId = parseResponse?.job_id;
+      console.log(jobId);
+
+      if (!jobId) {
+        throw new Error('Сервер не вернул job_id');
+      }
+
+      // Обновляем статус: ожидание результата
+      await ctx.api.editMessageText(
+        ctx.chat.id,
+        statusMsg.message_id,
+        `⏳ **${fileName}**: Распознавание выполняется...`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Polling результата
+      const resultJson = await pollResult(jobId);
+
+      // Готово
+      await ctx.api.editMessageText(
+        ctx.chat.id,
+        statusMsg.message_id,
+        `✅ **${fileName}**: Обработка завершена!`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Отправка результата пользователю
+      const jsonString = JSON.stringify(resultJson, null, 2);
+
+      if (jsonString.length > 4000) {
+        await ctx.replyWithDocument(
+          new InputFile(Buffer.from(jsonString), `result_${fileName}.json`),
+          { caption: `📄 Результат для: ${fileName}` }
+        );
+      } else {
+        await ctx.reply(
+          `📄 **Результат (${fileName}):**\n\`\`\`json\n${jsonString}\n\`\`\``,
+          { parse_mode: 'Markdown' }
+        );
       }
     } catch (error) {
       console.error(`Ошибка при обработке ${fileName}:`, error.message);
       const errorText = getErrorMessage(error);
 
-      // Обновляем статус: Ошибка, используя адаптированный текст
+      // Обновляем статус: Ошибка
       await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `❌ **${fileName}**: Ошибка\n_${errorText}_`, {
         parse_mode: 'Markdown'
       });

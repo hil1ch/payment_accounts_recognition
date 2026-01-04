@@ -52,8 +52,8 @@ function getErrorMessage(error) {
 
 async function pollResult(jobId, options = {}) {
   const {
-    interval = 3000,
-    timeout = 60000
+    interval = Number(process.env.POLL_INTERVAL),
+    timeout = Number(process.env.POLL_TIMEOUT)
   } = options;
 
   const startTime = Date.now();
@@ -61,8 +61,10 @@ async function pollResult(jobId, options = {}) {
   while (true) {
     const response = await axios.get(
       `${process.env.BASE_URL}/result/${jobId}`,
-      { timeout: 10000 }
+      { timeout: Number(process.env.GET_TIMEOUT) }
     );
+
+    console.log('POLL:', response.data);
 
     // eslint-disable-next-line prefer-destructuring
     const data = response.data;
@@ -159,7 +161,7 @@ bot.on('message:document', async(ctx) => {
         formData,
         {
           headers: { ...formData.getHeaders() },
-          timeout: 60000
+          timeout: Number(process.env.POST_TIMEOUT)
         }
       );
 
@@ -174,6 +176,7 @@ bot.on('message:document', async(ctx) => {
       }
 
       const jobId = parseResponse?.job_id;
+      console.log(jobId);
 
       if (!jobId) {
         throw new Error('Сервер не вернул job_id');

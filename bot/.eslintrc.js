@@ -36,7 +36,6 @@ module.exports = {
     'space-infix-ops': 'error',
     'space-before-blocks': 'error',
     'brace-style': ['error', '1tbs'],
-    curly: ['error', 'all'],
     eqeqeq: ['error', 'always'],
     'no-eval': 'error',
     'no-implied-eval': 'error',

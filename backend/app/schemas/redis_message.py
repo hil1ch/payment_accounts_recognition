@@ -1,5 +1,4 @@
-from pydantic import UUID4, BaseModel, FilePath, Json
-from pydantic import UUID4, BaseModel
+from pydantic import BaseModel, FilePath
 from app.schemas.client_DTOs import JobStatus
 from datetime import datetime
 

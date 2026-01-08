@@ -53,6 +53,43 @@ services:
       - "8000:8000"
     volumes:
       - shared_data:/shared
+    
+  ml_service:
+    build: ./ml
+    container_name: ml_service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    networks:
+      - rabbitmq_network
+      - redis_network
+      - ml_network
+    volumes:
+      - shared_data:/shared
+
+  ollama:
+    build: ./ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+    environment:
+    - OLLAMA_NUM_GPU=0      # ❗ если нет мощной GPU
+    - OLLAMA_NUM_THREADS=4  # под ноут
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ml_network
 
   bot:
     build: ./bot
@@ -67,9 +104,10 @@ services:
 volumes:
   shared_data:
   redis_data:
-    driver: local
+  ollama_data:
 
 networks:
+  ml_network:
   rabbitmq_network:
   redis_network:
   backend_network:

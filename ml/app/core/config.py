@@ -1,0 +1,17 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    app_env: str 
+    rabbit_url: str 
+    queue_name: str 
+    routing_key: str 
+    shared_dir: str
+    redis_host: str 
+    redis_port: int
+    redis_password: str
+    ollama_host: str
+    max_generation_time: int = 200
+
+    model_config = SettingsConfigDict(env_file = ".env")
+
+settings = Settings()

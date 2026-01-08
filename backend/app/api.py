@@ -15,13 +15,6 @@ async def parse(request: Request, file: UploadFile) -> ParseResponce:
     curr_job_id = uuid4()
     file_path = save_uploaded_file(file, settings.shared_dir, curr_job_id)
 
-    queue_message = QueueMessage(
-        job_id=curr_job_id,
-        file_path=file_path,
-        creation_time=datetime.now()
-    )
-    await publisher.publish(queue_message)
-
     redis_message = RedisMessage(
         status=JobStatus.waiting,
         file_path=file_path,
@@ -29,6 +22,13 @@ async def parse(request: Request, file: UploadFile) -> ParseResponce:
         result={} 
     )
     await save_message_to_redis(request.app.state.redis, curr_job_id, redis_message)
+
+    queue_message = QueueMessage(
+        job_id=curr_job_id,
+        file_path=file_path,
+        creation_time=datetime.now()
+    )
+    await publisher.publish(queue_message)
 
     return ParseResponce(job_id = curr_job_id)
 

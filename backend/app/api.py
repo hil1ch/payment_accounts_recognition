@@ -6,7 +6,7 @@ from app.schemas.queue_message import QueueMessage
 from app.services.rabbit_publisher import publisher
 from datetime import datetime
 from app.core.config import settings
-from app.services.file_service import save_uploaded_file, delite_file
+from app.services.file_service import save_uploaded_file, delete_file
 from app.services.redis_service import save_message_to_redis, get_message_from_redis, delete_message_from_redis
 from uuid import UUID, uuid4
 from fastapi import Request

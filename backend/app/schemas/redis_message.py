@@ -1,10 +1,10 @@
-from pydantic import BaseModel, FilePath
+from pydantic import BaseModel, FilePath, Field
 from app.schemas.client_DTOs import JobStatus
 from datetime import datetime
 
 class RedisMessage(BaseModel):
     status: JobStatus
-    file_path: FilePath
+    file_path: str
     creation_time: datetime
     result: dict | None = None #maybe there should be json here, but with it was error
     

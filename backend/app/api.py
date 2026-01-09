@@ -7,7 +7,7 @@ from app.services.rabbit_publisher import publisher
 from datetime import datetime
 from app.core.config import settings
 from app.services.file_service import save_uploaded_file, delete_file
-from app.services.redis_service import save_message_to_redis, get_message_from_redis, delete_message_from_redis
+from app.services.redis_service import save_message_to_redis, get_message_from_redis
 from uuid import UUID, uuid4
 from fastapi import Request
 
@@ -40,7 +40,8 @@ async def get_result(request: Request, job_id: UUID) -> ResultResponce:
         raise HTTPException(status_code=500, detail="Error processing file")
     
     if message.status == JobStatus.done:
-        await delete_message_from_redis(request.app.state.redis, job_id)
+# If the client crashes before the result is displayed, he will not be able to get it again.
+#        await delete_message_from_redis(request.app.state.redis, job_id)
         delete_file(message.file_path) #TODO: do async maybe
     
     return ResultResponce(status = message.status, 

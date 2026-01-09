@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     redis_password: str
     ollama_host: str
     max_generation_time: int = 200
+    redis_expire_seconds: int 
+
 
     # Типы моделей: "easyocr" или "mock" для OCR, "ollama" или "mock" для LLM
     ocr_model_type: str = "easyocr"

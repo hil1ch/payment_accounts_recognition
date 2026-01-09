@@ -8,7 +8,7 @@ from app.core.logging_config import logger
 async def save_message_to_redis(redis: Redis, key: UUID, message: RedisMessage):
     try:
         value = message.model_dump_json()
-        await redis.set(str(key), value, ex=settings.redis_expire_seconds)
+        await redis.set(str(key), value, settings.redis_expire_seconds)
         logger.debug(f"Message saved to Redis, key: {key}, ttl: {settings.redis_expire_seconds}s, status: {message.status}")
     except Exception as e:
         logger.error(f"Failed to save message to Redis for key {key}: {str(e)}")

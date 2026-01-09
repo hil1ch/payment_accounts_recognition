@@ -1,3 +1,10 @@
+# OCR_TYPE=easyocr
+# OCR_LANGUAGES=["en", "ru"]
+# OCR_GPU=false
+# OCR_MODEL_STORAGE_DIRECTORY=/models/easyocr
+
+
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -11,6 +18,17 @@ class Settings(BaseSettings):
     redis_password: str
     ollama_host: str
     max_generation_time: int = 200
+
+    # Типы моделей: "easyocr" или "mock" для OCR, "ollama" или "mock" для LLM
+    ocr_model_type: str = "easyocr"
+    llm_model_type: str = "ollama"
+    
+    # Параметры для OCR (опционально, используются только для easyocr)
+    ocr_languages: str = "en,ru"  # Список языков через запятую
+    ocr_gpu: bool = False
+    
+    # Параметры для LLM (опционально, используются только для ollama)
+    ollama_model_name: str = "gemma3:4b-it-qat"
 
     model_config = SettingsConfigDict(env_file = ".env")
 

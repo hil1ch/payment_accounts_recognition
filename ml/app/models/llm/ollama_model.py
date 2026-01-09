@@ -3,7 +3,7 @@
 # - В `__init__` принимает URL Ollama, имя модели
 # - Реализует `generate()` используя Ollama API
 
-from ml.app.models.base.llm_model import LLMModel
+from models.base.llm_model import LLMModel
 import ollama
 import time
 
@@ -18,12 +18,15 @@ class OllamaModel(LLMModel):
         """
         self.base_url = base_url
         self.model_name = model_name
+        # Устанавливаем base_url для ollama клиента
+        ollama.base_url = base_url
 
-    def generate(self, prompt: str, options: dict = None, max_generation_time: int = 2000) -> dict:
+    def generate(self, prompt: str, options: dict = None, max_generation_time: int = 200) -> dict:
         """Generate text based on the given prompt using Ollama API.
 
         Args:
             prompt (str): The input prompt for text generation.
+            options (dict): Опции для генерации (temperature и т.д.)
             max_generation_time (int): Maximum time allowed for generation in seconds.
         Returns:
             dict: A dictionary containing the generated text and any relevant metadata.
@@ -32,7 +35,7 @@ class OllamaModel(LLMModel):
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
             stream=True,
-            options= options if options is not None else {"temperature": 0.1},
+            options=options if options is not None else {"temperature": 0.1},
         )
 
         start_time = time.time()

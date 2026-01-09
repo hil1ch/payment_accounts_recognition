@@ -12,11 +12,9 @@ class OCRModel(ABC):
             str: The extracted text from the image. 
         """
         pass
-    
+    @abstractmethod
     def extract_text_from_pdf(self, pdf_path: str) -> str:
-        '''Базовая реализация через конвертацию в изображения'''
-
-        return self._extract_text_from_pdf_via_images(pdf_path)
+        pass
     
     def extract_text_from_pdf_via_images(self, pdf_path: str) -> str:
         """Вспомогательный метод для конвертации PDF -> изображения -> текст."""

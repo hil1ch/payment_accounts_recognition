@@ -41,8 +41,8 @@ async def get_result(request: Request, job_id: UUID) -> ResultResponce:
     
     if message.status == JobStatus.done:
         await delete_message_from_redis(request.app.state.redis, job_id)
-        delite_file(message.file_path) #TODO: do async maybe
+        delete_file(message.file_path) #TODO: do async maybe
     
     return ResultResponce(status = message.status, 
                           result = json.dumps(message.result),  
-                          processing_time_ms = int((datetime.now() - message.creadtion_time).total_seconds() * 1000))
+                          processing_time_ms = int((datetime.now() - message.creation_time).total_seconds() * 1000))

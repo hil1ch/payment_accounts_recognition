@@ -5,6 +5,6 @@ from datetime import datetime
 class RedisMessage(BaseModel):
     status: JobStatus
     file_path: FilePath
-    creadtion_time: datetime
+    creation_time: datetime
     result: dict | None = None #maybe there should be json here, but with it was error
     

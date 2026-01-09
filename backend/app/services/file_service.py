@@ -22,7 +22,7 @@ def save_uploaded_file(uploaded_file: UploadFile, destination_folder: DirectoryP
     return file_path
 
 #use it in endpoint when job_statuse = done 
-def delite_file(file_path: FilePath):
+def delete_file(file_path: FilePath):
     try:
         os.remove(file_path)
     except Exception as e:

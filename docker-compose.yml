@@ -71,25 +71,25 @@ services:
     volumes:
       - shared_data:/shared
 
-  ollama:
-    build: ./ollama
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
+  # ollama:
+  #   build: ./ollama
+  #   container_name: ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
 
-    environment:
-      - OLLAMA_NUM_GPU=0
-      - OLLAMA_GPU_LAYERS=4
+  #   environment:
+  #     - OLLAMA_NUM_GPU=0
+  #     - OLLAMA_GPU_LAYERS=4
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    networks:
-      - ml_network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  #   networks:
+  #     - ml_network
 
   bot:
     build: ./bot

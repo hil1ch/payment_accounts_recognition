@@ -18,18 +18,19 @@ class Settings(BaseSettings):
     redis_password: str
     ollama_host: str
     max_generation_time: int = 200
+    redis_expire_seconds: int 
+
 
     # Типы моделей: "easyocr" или "mock" для OCR, "ollama" или "mock" для LLM
     ocr_model_type: str = "easyocr"
     llm_model_type: str = "ollama"
     
     # Параметры для OCR (опционально, используются только для easyocr)
-    ocr_languages: str = "en,ru"  # Список языков через запятую
-    ocr_gpu: bool = False
+    ocr_languages: str | None = None  # = "en,ru"  # Список языков через запятую
+    ocr_gpu: bool | None = None # = False
     
     # Параметры для LLM (опционально, используются только для ollama)
-    ollama_model_name: str = "gemma3:4b-it-qat"
-
+    ollama_model_name: str | None = None # = "gemma3:4b-it-qat"
     model_config = SettingsConfigDict(env_file = ".env")
 
 settings = Settings()

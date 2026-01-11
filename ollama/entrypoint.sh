@@ -11,6 +11,7 @@ done
 
 echo "Pulling models..."
 ollama pull gemma3:4b-it-qat
+ollama pull gpt-oss:20b-cloud
 
 echo "Ollama is ready."
 wait

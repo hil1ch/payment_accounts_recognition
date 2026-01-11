@@ -1,7 +1,7 @@
 import json
 import os
 from fastapi import HTTPException, UploadFile
-from app.schemas.client_DTOs import *
+from app.schemas.client_DTOs import JobStatus, ParseResponce, ResultResponce
 from app.schemas.redis_message import RedisMessage
 from app.schemas.queue_message import QueueMessage
 from app.services.rabbit_publisher import publisher
@@ -16,7 +16,7 @@ from typing import Annotated
 
 async def parse(request: Request, file: UploadFile ) -> ParseResponce:
     curr_job_id = uuid4()
-    
+
     if(file.content_type not in  ["image/jpeg", "image/png","application/pdf" ]):
         logger.warning(f"Unsupported file type: {file.content_type}, job_id: {curr_job_id}")
         raise HTTPException(status_code=400, detail="Unsupported file type. Only JPEG, PNG, and PDF are allowed.")

@@ -1,4 +1,5 @@
 import base64
+from pydoc import text
 import requests
 from pathlib import Path
 from models.base.ocr_model import OCRModel
@@ -12,8 +13,7 @@ class LightOnOCRModel(OCRModel):
     """
     
     def __init__(self, base_url: str = "http://localhost:8001", 
-                 model_name: str = "lightonai/LightOnOCR-1B-1025",
-                 api_key: str = None):
+                 model_name: str = "lightonai/LightOnOCR-1B-1025"):
         """Initialize LightOnOCR model.
         
         Args:
@@ -24,7 +24,6 @@ class LightOnOCRModel(OCRModel):
         try:
             self.base_url = base_url.rstrip("/")
             self.model_name = model_name
-            self.api_key = api_key
             self.api_endpoint = f"{self.base_url}/v1/chat/completions"
             
             logger.info(f"Initializing LightOnOCRModel (base_url: {self.base_url}, model: {self.model_name})")
@@ -91,41 +90,26 @@ class LightOnOCRModel(OCRModel):
                                 "image_url": {
                                     "url": f"data:{media_type};base64,{image_base64}"
                                 }
-                            },
-                            {
-                                "type": "text",
-                                "text": "Extract all text from this image. Provide only the extracted text without any additional commentary."
                             }
                         ]
                     }
                 ],
                 "max_tokens": 4096,
-                "temperature": 0.3
+                "temperature": 0.2,
+                "top_p": 0.9
             }
             
-            # Make request to vLLM API
-            headers = {"Content-Type": "application/json"}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
             
             logger.debug(f"Calling vLLM API for image: {image_path}")
             response = requests.post(
                 self.api_endpoint,
                 json=payload,
-                headers=headers,
-                timeout=300
+                timeout=50
             )
-            response.raise_for_status()
             
             # Extract text from response
-            result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                text = result["choices"][0]["message"]["content"]
-                logger.debug(f"Successfully extracted text from {image_path}")
-                return text
-            else:
-                logger.warning(f"Unexpected API response structure: {result}")
-                return ""
+            text = response.json()['choices'][0]['message']['content']
+            return text
                 
         except requests.exceptions.Timeout:
             logger.error(f"Timeout calling vLLM API for image {image_path}")

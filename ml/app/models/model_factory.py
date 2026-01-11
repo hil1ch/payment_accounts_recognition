@@ -30,8 +30,7 @@ def create_ocr_model(model_type: str, **kwargs) -> OCRModel:
     elif model_type == "lightonocr":
         base_url = kwargs.get("base_url", "http://localhost:8001")
         model_name = kwargs.get("model_name", "lightonai/LightOnOCR-1B-1025")
-        api_key = kwargs.get("api_key", None)
-        return LightOnOCRModel(base_url=base_url, model_name=model_name, api_key=api_key)
+        return LightOnOCRModel(base_url=base_url, model_name=model_name)
     
     elif model_type == "mock":
         mock_text = kwargs.get("mock_text", "Sample OCR Text\nLine 2\nLine 3")

@@ -51,8 +51,7 @@ class TaskProcessor:
             if settings.ocr_model_type == "lightonocr":
                 ocr_kwargs.update({
                     "base_url": settings.lightonai_base_url,
-                    "model_name": settings.lightonai_model_name,
-                    "api_key": settings.lightonai_api_key
+                    "model_name": settings.lightonai_model_name
                 })
             
             # Создаем OCR модель через фабрику

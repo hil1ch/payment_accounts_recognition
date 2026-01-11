@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI):
             port=settings.redis_port,
             password=settings.redis_password,
             decode_responses=True
+
         )
         logger.info(f"Redis connection established (host: {settings.redis_host}:{settings.redis_port})")
     except Exception as e:
@@ -47,7 +48,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing RabbitMQ connection: {str(e)}")
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url="/docs" if settings.app_env == "development" else None,
+    redoc_url="/redoc" if settings.app_env == "development" else None,
+    openapi_url="/openapi.json" if settings.app_env == "development" else None
+    )
 
 app.add_api_route("/parse", parse, methods=["POST"])
 app.add_api_route("/result/{job_id}", get_result, methods=["GET"])

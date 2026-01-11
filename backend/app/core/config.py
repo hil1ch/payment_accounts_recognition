@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     redis_port: int
     redis_password: str
     redis_expire_seconds: int 
+    file_max_size_mb: int = 20
 
     model_config = SettingsConfigDict(env_file = ".env")
 

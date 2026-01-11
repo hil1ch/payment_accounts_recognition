@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from app.api import parse, get_result
 from contextlib import asynccontextmanager
 from app.core.rabbit_connection import rabbit_conn
@@ -48,6 +49,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing RabbitMQ connection: {str(e)}")
 
+
+
 app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs" if settings.app_env == "development" else None,
@@ -58,6 +61,17 @@ app = FastAPI(
 app.add_api_route("/parse", parse, methods=["POST"])
 app.add_api_route("/result/{job_id}", get_result, methods=["GET"])
 
+@app.middleware("http")
+async def limit_upload_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
 
+    if content_length and int(content_length) > settings.file_max_size_mb * 1024 * 1024:
+        logger.warning(f"File size exceeds limit: {content_length} bytes")
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"Maximum file size is {settings.file_max_size_mb} MB"},
+        )
+
+    return await call_next(request)
 
 

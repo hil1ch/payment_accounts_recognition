@@ -10,11 +10,17 @@ from app.core.config import settings
 from app.services.file_service import save_uploaded_file, delete_file
 from app.services.redis_service import save_message_to_redis, get_message_from_redis
 from uuid import UUID, uuid4
-from fastapi import Request
+from fastapi import Request, File
 from app.core.logging_config import logger
+from typing import Annotated
 
-async def parse(request: Request, file: UploadFile) -> ParseResponce:
+async def parse(request: Request, file: UploadFile ) -> ParseResponce:
     curr_job_id = uuid4()
+    
+    if(file.content_type not in  ["image/jpeg", "image/png","application/pdf" ]):
+        logger.warning(f"Unsupported file type: {file.content_type}, job_id: {curr_job_id}")
+        raise HTTPException(status_code=400, detail="Unsupported file type. Only JPEG, PNG, and PDF are allowed.")
+    
     logger.info(f"Received file: {file.filename} (type: {file.content_type}), job_id: {curr_job_id}")
     
     try:

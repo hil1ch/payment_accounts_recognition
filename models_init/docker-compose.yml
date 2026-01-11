@@ -1,0 +1,65 @@
+services:
+  ollama:
+    build: ./ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ocr:
+    build: ./ocr
+    container_name: ocr
+    ports:
+      - "8001:8001"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/v1/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  api:
+    build: ./api
+    container_name: llm_api
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ocr:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OCR_HOST=http://ocr:8001/v1/chat/completions
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  ollama_data:

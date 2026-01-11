@@ -4,6 +4,7 @@ from models.base.ocr_model import OCRModel
 from models.base.llm_model import LLMModel
 from models.ocr.easyocr_model import EasyOCRModel
 from models.ocr.mock_ocr_model import MockOCRModel
+from models.ocr.light_on_ocr_model import LightOnOCRModel
 from models.llm.ollama_model import OllamaModel
 from models.llm.mock_llm_model import MockLLMModel
 
@@ -12,7 +13,7 @@ def create_ocr_model(model_type: str, **kwargs) -> OCRModel:
     """Создает модель OCR по типу.
     
     Args:
-        model_type: Тип модели ("easyocr", "mock")
+        model_type: Тип модели ("easyocr", "lightonocr", "mock")
         **kwargs: Параметры для инициализации модели
         
     Returns:
@@ -26,12 +27,18 @@ def create_ocr_model(model_type: str, **kwargs) -> OCRModel:
         gpu = kwargs.get("gpu", False)
         return EasyOCRModel(languages=languages, gpu=gpu)
     
+    elif model_type == "lightonocr":
+        base_url = kwargs.get("base_url", "http://localhost:8001")
+        model_name = kwargs.get("model_name", "lightonai/LightOnOCR-1B-1025")
+        api_key = kwargs.get("api_key", None)
+        return LightOnOCRModel(base_url=base_url, model_name=model_name, api_key=api_key)
+    
     elif model_type == "mock":
         mock_text = kwargs.get("mock_text", "Sample OCR Text\nLine 2\nLine 3")
         return MockOCRModel(mock_text=mock_text)
     
     else:
-        raise ValueError(f"Unknown OCR model type: {model_type}")
+        raise ValueError(f"Unknown OCR model type: {model_type}. Available: easyocr, lightonocr, mock")
 
 
 def create_llm_model(model_type: str, **kwargs) -> LLMModel:

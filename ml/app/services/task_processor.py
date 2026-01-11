@@ -35,19 +35,32 @@ class TaskProcessor:
         try:
             logger.info(f"Initializing models (OCR: {settings.ocr_model_type}, LLM: {settings.llm_model_type})")
             
-            # Парсим языки для OCR из строки конфига
+            # Парсим языки для OCR из строки конфига (только для easyocr)
             if settings.ocr_languages != None:
                 languages = [lang.strip() for lang in settings.ocr_languages.split(",")]
             else:
                 languages = None
             
+            # Подготавливаем параметры для создания OCR модели
+            ocr_kwargs = {
+                "languages": languages,
+                "gpu": settings.ocr_gpu
+            }
+            
+            # Добавляем параметры для lightonocr если используется эта модель
+            if settings.ocr_model_type == "lightonocr":
+                ocr_kwargs.update({
+                    "base_url": settings.lightonai_base_url,
+                    "model_name": settings.lightonai_model_name,
+                    "api_key": settings.lightonai_api_key
+                })
+            
             # Создаем OCR модель через фабрику
             self.ocr_model: OCRModel = create_ocr_model(
                 model_type=settings.ocr_model_type,
-                languages=languages,
-                gpu=settings.ocr_gpu
+                **ocr_kwargs
             )
-            logger.info(f"OCR model initialized (languages: {languages}, GPU: {settings.ocr_gpu})")
+            logger.info(f"OCR model initialized (type: {settings.ocr_model_type})")
             
             # Создаем LLM модель через фабрику
             self.llm_model: LLMModel = create_llm_model(

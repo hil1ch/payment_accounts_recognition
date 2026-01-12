@@ -21,6 +21,15 @@ const SUPPORTED_MIME_TYPES = new Set([
   'image/jpg'
 ]);
 
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // Настройка команд
 bot.api.setMyCommands([
   { command: 'start', description: 'Запустить бота' },
@@ -112,14 +121,16 @@ async function handleFileMessage(ctx, fileMeta) {
   } = fileMeta;
   const fileName = rawFileName || 'document.pdf';
 
+  const safeFileName = escapeHtml(fileName);
+
   // 1. Проверка формата
   if (!mimeType || !SUPPORTED_MIME_TYPES.has(mimeType)) {
-    return ctx.reply(`❌ *${fileName}*: Ошибка. Принимаются только PDF/PNG/JPEG.`, { parse_mode: 'Markdown' });
+    return ctx.reply(`❌ <b>${safeFileName}</b>: Ошибка. Принимаются только PDF/PNG/JPEG.`, { parse_mode: 'HTML' });
   }
 
   // 2. Проверка размера
   if (fileSize > MAX_FILE_SIZE) {
-    return ctx.reply(`❌ *${fileName}*: Ошибка. Файл слишком большой (>10МБ).`, { parse_mode: 'Markdown' });
+    return ctx.reply(`❌ <b>${safeFileName}</b>: Ошибка. Файл слишком большой (&gt;10МБ).`, { parse_mode: 'HTML' });
   }
 
   // 3. Отправляем сообщение о принятии
@@ -128,7 +139,7 @@ async function handleFileMessage(ctx, fileMeta) {
     return ctx.reply(
       `❌ *${fileName}*: Ошибка. Общая очередь переполнена. Сейчас обрабатывается/ожидает **${totalQueueSize}** файлов (лимит: ${MAX_QUEUE_LENGTH}). Попробуйте отправить файлы позже.`,
       {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_to_message_id: ctx.message.message_id
       }
     );
@@ -137,18 +148,18 @@ async function handleFileMessage(ctx, fileMeta) {
   // 4. Отправляем сообщение о принятии
   const filesInQueue = queue.size + queue.pending;
   const statusText = filesInQueue >= CONCURRENCY_LIMIT
-    ? `📥 *${fileName}*: Принят в очередь... (${filesInQueue} в ожидании)`
-    : `⚙️ *${fileName}*: Начинаю обработку...`;
+    ? `📥 <b>${safeFileName}</b>: Принят в очередь... (${filesInQueue} в ожидании)`
+    : `⚙️ <b>${safeFileName}</b>: Начинаю обработку...`;
 
   const statusMsg = await ctx.reply(statusText, {
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_to_message_id: ctx.message.message_id
   });
 
   queue.add(async() => {
     try {
       // Статус: В работе
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `⚙️ *${fileName}*: В работе...`, { parse_mode: 'Markdown' });
+      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `⚙️ <b>${escapeHtml(fileName)}</b>: В работе...`, { parse_mode: 'HTML' });
 
       // Скачивание файла из Telegram
       const file = await ctx.getFile();
@@ -184,8 +195,8 @@ async function handleFileMessage(ctx, fileMeta) {
       await ctx.api.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
-        `⏳ *${fileName}*: Распознавание выполняется...`,
-        { parse_mode: 'Markdown' }
+        `⏳ <b>${escapeHtml(fileName)}</b>: Распознавание выполняется...`,
+        { parse_mode: 'HTML' }
       );
 
       const resultJson = await pollResult(jobId);
@@ -194,12 +205,14 @@ async function handleFileMessage(ctx, fileMeta) {
       await ctx.api.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
-        `✅ *${fileName}*: Обработка завершена!`,
-        { parse_mode: 'Markdown' }
+        `✅ <b>${escapeHtml(fileName)}</b>: Обработка завершена!`,
+        { parse_mode: 'HTML' }
       );
 
       // Отправка результата пользователю
       const jsonString = JSON.stringify(resultJson, null, 2);
+      const safeJson = escapeHtml(jsonString);
+
       if (jsonString.length > 4000) {
         await ctx.replyWithDocument(
           new InputFile(Buffer.from(jsonString), `result_${fileName}.json`),
@@ -207,8 +220,8 @@ async function handleFileMessage(ctx, fileMeta) {
         );
       } else {
         await ctx.reply(
-          `📄 **Результат (${fileName}):**\n\`\`\`json\n${jsonString}\n\`\`\``,
-          { parse_mode: 'Markdown' }
+          `📄 <b>Результат (${safeFileName}):</b>\n<pre>${safeJson}</pre>`,
+          { parse_mode: 'HTML' }
         );
       }
     } catch (error) {
@@ -216,8 +229,8 @@ async function handleFileMessage(ctx, fileMeta) {
       const errorText = getErrorMessage(error);
 
       // Обновляем статус: Ошибка
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `❌ *${fileName}*: Ошибка\n_${errorText}_`, {
-        parse_mode: 'Markdown'
+      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `❌ <b>${escapeHtml(fileName)}</b>: Ошибка<br><i>${escapeHtml(errorText)}</i>`, {
+        parse_mode: 'HTML'
       });
     }
   });

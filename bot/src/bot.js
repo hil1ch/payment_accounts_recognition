@@ -4,6 +4,10 @@ const axios = require('axios');
 const FormData = require('form-data');
 const { default: PQueue } = require('p-queue');
 
+function escapeMarkdownV2(text) {
+  return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+}
+
 const bot = new Bot(process.env.BOT_API_KEY);
 
 // Инициализация очереди
@@ -81,8 +85,7 @@ async function pollResult(jobId, options = {}) {
     // ⏳ В ожидании
     if (data.status === 'waiting' || data.status === 'in_progress') {
       // ничего не делаем
-    } 
-    else {
+    } else {
       throw new Error(`Неизвестный статус задачи: ${data.status}`);
     }
 
@@ -99,25 +102,26 @@ async function pollResult(jobId, options = {}) {
 // Основной обработчик PDF
 bot.on('message:document', async(ctx) => {
   const { document } = ctx.message;
-  const fileName = document.file_name || 'document.pdf';
+  const rawFileName = document.file_name || 'document.pdf';
+  const safeFileName = escapeMarkdownV2(rawFileName);
 
   // 1. Проверка формата
   if (!document.mime_type || !document.mime_type.includes('pdf')) {
-    return ctx.reply(`✗ **${fileName}**: Ошибка. Принимаются только PDF.`, { parse_mode: 'Markdown' });
+    return ctx.reply(`✗ *${safeFileName}*: Ошибка. Принимаются только PDF.`, { parse_mode: 'MarkdownV2' });
   }
 
   // 2. Проверка размера
   if (document.file_size > MAX_FILE_SIZE) {
-    return ctx.reply(`✗ **${fileName}**: Ошибка. Файл слишком большой (>10МБ).`, { parse_mode: 'Markdown' });
+    return ctx.reply(`✗ *${safeFileName}*: Ошибка. Файл слишком большой (>10МБ).`, { parse_mode: 'MarkdownV2' });
   }
 
   // 3. Отправляем сообщение о принятии
   const totalQueueSize = queue.size + queue.pending;
   if (totalQueueSize >= MAX_QUEUE_LENGTH) {
     return ctx.reply(
-      `❌ **${fileName}**: Ошибка. Общая очередь переполнена. Сейчас обрабатывается/ожидает **${totalQueueSize}** файлов (лимит: ${MAX_QUEUE_LENGTH}). Попробуйте отправить файлы позже.`,
+      `❌ *${safeFileName}*: Ошибка. Общая очередь переполнена. Сейчас обрабатывается/ожидает *${totalQueueSize}* файлов (лимит: ${MAX_QUEUE_LENGTH}). Попробуйте отправить файлы позже.`,
       {
-        parse_mode: 'Markdown',
+        parse_mode: 'MarkdownV2',
         reply_to_message_id: ctx.message.message_id
       }
     );
@@ -126,11 +130,11 @@ bot.on('message:document', async(ctx) => {
   // 4. Отправляем сообщение о принятии
   const filesInQueue = queue.size + queue.pending;
   const statusText = filesInQueue >= CONCURRENCY_LIMIT
-    ? `📥 **${fileName}**: Принят в очередь... (${filesInQueue} в ожидании)`
-    : `⚙️ **${fileName}**: Начинаю обработку...`;
+    ? `📥 *${safeFileName}*: Принят в очередь... (${filesInQueue} в ожидании)`
+    : `⚙️ *${safeFileName}*: Начинаю обработку...`;
 
   const statusMsg = await ctx.reply(statusText, {
-    parse_mode: 'Markdown',
+    parse_mode: 'MarkdownV2',
     reply_to_message_id: ctx.message.message_id
   });
 
@@ -138,7 +142,7 @@ bot.on('message:document', async(ctx) => {
   queue.add(async() => {
     try {
       // Статус: В работе
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `⚙️ **${fileName}**: В работе...`, { parse_mode: 'Markdown' });
+      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `⚙️ *${safeFileName}*: В работе...`, { parse_mode: 'MarkdownV2' });
 
       // Скачивание файла из Telegram
       const file = await ctx.getFile();
@@ -152,7 +156,7 @@ bot.on('message:document', async(ctx) => {
 
       const formData = new FormData();
       formData.append('file', fileStream.data, {
-        filename: fileName,
+        filename: rawFileName,
         contentType: 'application/pdf'
       });
 
@@ -187,8 +191,8 @@ bot.on('message:document', async(ctx) => {
       await ctx.api.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
-        `⏳ **${fileName}**: Распознавание выполняется...`,
-        { parse_mode: 'Markdown' }
+        `⏳ *${safeFileName}*: Распознавание выполняется...`,
+        { parse_mode: 'MarkdownV2' }
       );
 
       // Polling результата
@@ -198,8 +202,8 @@ bot.on('message:document', async(ctx) => {
       await ctx.api.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
-        `✅ **${fileName}**: Обработка завершена!`,
-        { parse_mode: 'Markdown' }
+        `✅ *${safeFileName}*: Обработка завершена!`,
+        { parse_mode: 'MarkdownV2' }
       );
 
       // Отправка результата пользователю
@@ -207,22 +211,22 @@ bot.on('message:document', async(ctx) => {
 
       if (jsonString.length > 4000) {
         await ctx.replyWithDocument(
-          new InputFile(Buffer.from(jsonString), `result_${fileName}.json`),
-          { caption: `📄 Результат для: ${fileName}` }
+          new InputFile(Buffer.from(jsonString), `result_${rawFileName}.json`),
+          { caption: `📄 Результат для: ${rawFileName}` }
         );
       } else {
         await ctx.reply(
-          `📄 **Результат (${fileName}):**\n\`\`\`json\n${jsonString}\n\`\`\``,
-          { parse_mode: 'Markdown' }
+          `📄 *Результат:* ${safeFileName}\n\`\`\`json\n${jsonString}\n\`\`\``,
+          { parse_mode: 'MarkdownV2' }
         );
       }
     } catch (error) {
-      console.error(`Ошибка при обработке ${fileName}:`, error.message);
+      console.error(`Ошибка при обработке ${safeFileName}:`, error.message);
       const errorText = getErrorMessage(error);
 
       // Обновляем статус: Ошибка
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `❌ **${fileName}**: Ошибка\n_${errorText}_`, {
-        parse_mode: 'Markdown'
+      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `❌ *${safeFileName}*: Ошибка\n_${errorText}_`, {
+        parse_mode: 'MarkdownV2'
       });
     }
   });

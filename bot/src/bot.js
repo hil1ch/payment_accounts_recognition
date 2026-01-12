@@ -4,10 +4,6 @@ const axios = require('axios');
 const FormData = require('form-data');
 const { default: PQueue } = require('p-queue');
 
-function escapeMarkdownV2(text) {
-  return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
-}
-
 const bot = new Bot(process.env.BOT_API_KEY);
 
 // Инициализация очереди
@@ -16,6 +12,7 @@ const MAX_QUEUE_LENGTH = 10;
 const queue = new PQueue({ concurrency: CONCURRENCY_LIMIT });
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const SUPPORTED_MIME_TYPES = new Set([
   'application/pdf',
   'application/x-pdf',
@@ -106,31 +103,32 @@ async function pollResult(jobId, options = {}) {
   }
 }
 
+// Основной обработчик файлов
 async function handleFileMessage(ctx, fileMeta) {
   const {
     rawFileName,
     mimeType,
     fileSize
   } = fileMeta;
-  const safeFileName = escapeMarkdownV2(rawFileName);
+  const fileName = rawFileName || 'document.pdf';
 
   // 1. Проверка формата
   if (!mimeType || !SUPPORTED_MIME_TYPES.has(mimeType)) {
-    return ctx.reply(`✗ *${safeFileName}*: Ошибка. Принимаются только PDF/PNG/JPEG.`, { parse_mode: 'MarkdownV2' });
+    return ctx.reply(`❌ *${fileName}*: Ошибка. Принимаются только PDF/PNG/JPEG.`, { parse_mode: 'Markdown' });
   }
 
   // 2. Проверка размера
   if (fileSize > MAX_FILE_SIZE) {
-    return ctx.reply(`✗ *${safeFileName}*: Ошибка. Файл слишком большой (>10МБ).`, { parse_mode: 'MarkdownV2' });
+    return ctx.reply(`❌ *${fileName}*: Ошибка. Файл слишком большой (>10МБ).`, { parse_mode: 'Markdown' });
   }
 
   // 3. Отправляем сообщение о принятии
   const totalQueueSize = queue.size + queue.pending;
   if (totalQueueSize >= MAX_QUEUE_LENGTH) {
     return ctx.reply(
-      `❌ *${safeFileName}*: Ошибка. Общая очередь переполнена. Сейчас обрабатывается/ожидает *${totalQueueSize}* файлов (лимит: ${MAX_QUEUE_LENGTH}). Попробуйте отправить файлы позже.`,
+      `❌ *${fileName}*: Ошибка. Общая очередь переполнена. Сейчас обрабатывается/ожидает **${totalQueueSize}** файлов (лимит: ${MAX_QUEUE_LENGTH}). Попробуйте отправить файлы позже.`,
       {
-        parse_mode: 'MarkdownV2',
+        parse_mode: 'Markdown',
         reply_to_message_id: ctx.message.message_id
       }
     );
@@ -139,19 +137,18 @@ async function handleFileMessage(ctx, fileMeta) {
   // 4. Отправляем сообщение о принятии
   const filesInQueue = queue.size + queue.pending;
   const statusText = filesInQueue >= CONCURRENCY_LIMIT
-    ? `📥 *${safeFileName}*: Принят в очередь... (${filesInQueue} в ожидании)`
-    : `⚙️ *${safeFileName}*: Начинаю обработку...`;
+    ? `📥 *${fileName}*: Принят в очередь... (${filesInQueue} в ожидании)`
+    : `⚙️ *${fileName}*: Начинаю обработку...`;
 
   const statusMsg = await ctx.reply(statusText, {
-    parse_mode: 'MarkdownV2',
+    parse_mode: 'Markdown',
     reply_to_message_id: ctx.message.message_id
   });
 
-  // 5. Добавляем задачу в очередь на выполнение
   queue.add(async() => {
     try {
       // Статус: В работе
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `⚙️ *${safeFileName}*: В работе...`, { parse_mode: 'MarkdownV2' });
+      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `⚙️ *${fileName}*: В работе...`, { parse_mode: 'Markdown' });
 
       // Скачивание файла из Telegram
       const file = await ctx.getFile();
@@ -165,77 +162,62 @@ async function handleFileMessage(ctx, fileMeta) {
 
       const formData = new FormData();
       formData.append('file', fileStream.data, {
-        filename: rawFileName,
+        filename: fileName,
         contentType: mimeType
       });
 
-      // Запрос к серверу распознавания
-      const serverResponse = await axios.post(
-        `${process.env.BASE_URL}/parse`,
-        formData,
-        {
-          headers: { ...formData.getHeaders() },
-          timeout: Number(process.env.POST_TIMEOUT)
-        }
-      );
+      // Отправка на сервер распознавания
+      const serverResponse = await axios.post(`${process.env.BASE_URL}/parse`, formData, {
+        headers: { ...formData.getHeaders() },
+        timeout: Number(process.env.POST_TIMEOUT)
+      });
 
       let parseResponse = serverResponse.data;
-
       if (typeof parseResponse === 'string') {
-        try {
-          parseResponse = JSON.parse(parseResponse);
-        } catch (e) {
-          throw new Error('Невозможно распарсить ответ сервера');
-        }
+        parseResponse = JSON.parse(parseResponse);
       }
 
       const jobId = parseResponse?.job_id;
-      console.log(jobId);
+      if (!jobId) throw new Error('Сервер не вернул job_id');
 
-      if (!jobId) {
-        throw new Error('Сервер не вернул job_id');
-      }
-
-      // Обновляем статус: ожидание результата
+      // Статус: в ожидании результата
       await ctx.api.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
-        `⏳ *${safeFileName}*: Распознавание выполняется...`,
-        { parse_mode: 'MarkdownV2' }
+        `⏳ *${fileName}*: Распознавание выполняется...`,
+        { parse_mode: 'Markdown' }
       );
 
-      // Polling результата
       const resultJson = await pollResult(jobId);
 
-      // Готово
+      // Статус: готово
       await ctx.api.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
-        `✅ *${safeFileName}*: Обработка завершена!`,
-        { parse_mode: 'MarkdownV2' }
+        `✅ *${fileName}*: Обработка завершена!`,
+        { parse_mode: 'Markdown' }
       );
 
       // Отправка результата пользователю
       const jsonString = JSON.stringify(resultJson, null, 2);
-
       if (jsonString.length > 4000) {
         await ctx.replyWithDocument(
-          new InputFile(Buffer.from(jsonString), `result_${rawFileName}.json`),
-          { caption: `📄 Результат для: ${rawFileName}` }
+          new InputFile(Buffer.from(jsonString), `result_${fileName}.json`),
+          { caption: `📄 Результат для: ${fileName}` }
         );
       } else {
         await ctx.reply(
-          `📄 *Результат:* ${safeFileName}\n\`\`\`json\n${jsonString}\n\`\`\``,
-          { parse_mode: 'MarkdownV2' }
+          `📄 **Результат (${fileName}):**\n\`\`\`json\n${jsonString}\n\`\`\``,
+          { parse_mode: 'Markdown' }
         );
       }
     } catch (error) {
-      console.error(`Ошибка при обработке ${safeFileName}:`, error.message);
+      console.error(`Ошибка при обработке ${fileName}:`, error.message);
       const errorText = getErrorMessage(error);
 
       // Обновляем статус: Ошибка
-      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `? *${safeFileName}*: Ошибка\n_${errorText}_`, {
-        parse_mode: 'MarkdownV2'
+      await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `❌ *${fileName}*: Ошибка\n_${errorText}_`, {
+        parse_mode: 'Markdown'
       });
     }
   });

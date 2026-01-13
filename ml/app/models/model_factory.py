@@ -2,7 +2,6 @@
 
 from models.base.ocr_model import OCRModel
 from models.base.llm_model import LLMModel
-from models.ocr.easyocr_model import EasyOCRModel
 from models.ocr.mock_ocr_model import MockOCRModel
 from models.ocr.light_on_ocr_model import LightOnOCRModel
 from models.llm.ollama_model import OllamaModel
@@ -22,12 +21,8 @@ def create_ocr_model(model_type: str, **kwargs) -> OCRModel:
     Raises:
         ValueError: Если передан неизвестный тип модели
     """
-    if model_type == "easyocr":
-        languages = kwargs.get("languages", ["en", "ru"])
-        gpu = kwargs.get("gpu", False)
-        return EasyOCRModel(languages=languages, gpu=gpu)
     
-    elif model_type == "lightonocr":
+    if model_type == "lightonocr":
         base_url = kwargs.get("base_url", "http://localhost:8001")
         model_name = kwargs.get("model_name", "lightonai/LightOnOCR-1B-1025")
         return LightOnOCRModel(base_url=base_url, model_name=model_name)

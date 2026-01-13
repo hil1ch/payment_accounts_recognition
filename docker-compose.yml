@@ -117,7 +117,7 @@ services:
 
   ollama:
       build: ./ollama
-      container_name: ollama
+      container_name: ollama_host
       ports:
         - "11434:11434"
       volumes:
